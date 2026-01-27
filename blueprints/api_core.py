@@ -145,6 +145,7 @@ def api_config_set():
 
         data = request.get_json(silent=True) or {}
         keys = [
+            'TG_BOT_TOKEN', 'TG_NOTIFY_CHAT_ID', 'PROXY', 'BYPASS_URL',
             'FLARE_SOLVERR_URL', 'LOG_LEVEL', 'LOG_BUFFER_SIZE', 'SAFE_MODE',
             'CRAWLER_MODE', 'CRAWLER_MAX_CONCURRENCY', 'CRAWLER_THREAD_COUNT',
             'CRAWLER_ASYNC_DELAY_MIN', 'CRAWLER_ASYNC_DELAY_MAX',

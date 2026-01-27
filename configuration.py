@@ -372,34 +372,32 @@ class UnifiedConfigManager:
         """
         获取配置值
         优先级: 内存/文件配置 > 环境变量 > 默认值
-        (注意：自 v1.3.1 起，文件配置优先级高于环境变量，以确保 UI 修改能即时覆盖 Docker 初始设置)
+        （Docker 和本地环境统一逻辑：配置文件优先，环境变量作为初始默认值）
         """
         self._check_reload()
-        
+
         # 检查缓存 TTL (例如 60秒清除一次)
         now = time.time()
         if now - getattr(self, '_last_cache_clear', 0) > 60:
              self._get_cache.clear()
              self._last_cache_clear = now
-             
+
         # 尝试从缓存获取
         cache_key = f"{section}:{key}:{default}"
         if cache_key in self._get_cache:
             return self._get_cache[cache_key]
 
-        # 1. 优先从内存/文件配置获取
+        # 1. 优先从内存/文件配置获取（允许 Web 界面覆盖）
         file_val = self._config.get(section, {}).get(key)
-        
-        if file_val is not None:
+        if file_val is not None and file_val != '':
             return file_val
 
         # 2. 如果文件没有，尝试从环境变量获取 (仅针对 app 配置)
         if section == 'app':
             env_val = os.environ.get(key)
-            if env_val is not None:
-                # 尝试转换类型以匹配默认值类型
+            if env_val is not None and env_val != '':
                 default_val = self.default_config['app'].get(key)
-                result = env_val  # 默认值为原始字符串
+                result = env_val
 
                 if default_val is not None:
                     try:
@@ -410,7 +408,32 @@ class UnifiedConfigManager:
                         elif isinstance(default_val, float):
                             result = float(env_val)
                         elif isinstance(default_val, list):
-                            # 支持逗号分隔，过滤空字符串
+                            result = [item.strip() for item in env_val.split(',') if item.strip()]
+                    except (ValueError, TypeError, AttributeError) as e:
+                        logger.warning(
+                            f"[CONFIG] 环境变量类型转换失败: {key}={env_val}, "
+                            f"期望类型: {type(default_val).__name__}, 错误: {e}"
+                        )
+                        result = env_val
+
+                return result
+
+        # 最后尝试环境变量
+        if section == 'app':
+            env_val = os.environ.get(key)
+            if env_val is not None:
+                default_val = self.default_config['app'].get(key)
+                result = env_val
+
+                if default_val is not None:
+                    try:
+                        if isinstance(default_val, bool):
+                            result = env_val.lower() in ('true', '1', 'yes', 'on')
+                        elif isinstance(default_val, int):
+                            result = int(env_val)
+                        elif isinstance(default_val, float):
+                            result = float(env_val)
+                        elif isinstance(default_val, list):
                             result = [item.strip() for item in env_val.split(',') if item.strip()]
                     except (ValueError, TypeError, AttributeError) as e:
                         logger.warning(
@@ -420,7 +443,6 @@ class UnifiedConfigManager:
                         )
                         result = default_val
                 else:
-                    # 没有找到对应的默认值类型，保持字符串
                     result = env_val
 
                 return result

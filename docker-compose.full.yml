@@ -1,0 +1,80 @@
+# 完整版 docker-compose.yml
+# 包含所有可通过环境变量配置的项目
+# 适合自动化部署或 CI/CD 场景
+
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: sht_web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # ========== 核心配置（必需）==========
+      - FLASK_APP=/app/app.py
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:////app/data/sht.db
+      
+      # ========== 安全配置 ==========
+      # SECRET_KEY: 建议设置，不设置会自动生成
+      - SECRET_KEY=${SECRET_KEY:-}
+      
+      # ========== 时区配置 ==========
+      - TZ=${TZ:-Asia/Shanghai}
+      
+      # ========== 日志配置 ==========
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_BUFFER_SIZE=${LOG_BUFFER_SIZE:-10000}
+      
+      # ========== Telegram Bot 配置 ==========
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN:-}
+      - TG_NOTIFY_CHAT_ID=${TG_NOTIFY_CHAT_ID:-}
+      
+      # ========== 网络代理配置 ==========
+      - PROXY=${PROXY:-}
+      - BYPASS_URL=${BYPASS_URL:-}
+      - FLARE_SOLVERR_URL=${FLARE_SOLVERR_URL:-}
+      - WEB_BASE_URL=${WEB_BASE_URL:-http://localhost:5000}
+      
+      # ========== 监控配置 ==========
+      - MONITORING_ENABLED=${MONITORING_ENABLED:-true}
+      - MONITORING_INTERVAL=${MONITORING_INTERVAL:-600}
+      - HEARTBEAT_INTERVAL=${HEARTBEAT_INTERVAL:-60}
+      
+      # ========== 爬虫配置 ==========
+      - CRAWLER_MODE=${CRAWLER_MODE:-async}
+      - CRAWLER_MAX_CONCURRENCY=${CRAWLER_MAX_CONCURRENCY:-20}
+      - CRAWLER_THREAD_COUNT=${CRAWLER_THREAD_COUNT:-10}
+      - CRAWLER_ASYNC_DELAY_MIN=${CRAWLER_ASYNC_DELAY_MIN:-0.5}
+      - CRAWLER_ASYNC_DELAY_MAX=${CRAWLER_ASYNC_DELAY_MAX:-1.5}
+      - CRAWLER_SYNC_DELAY_MIN=${CRAWLER_SYNC_DELAY_MIN:-0.3}
+      - CRAWLER_SYNC_DELAY_MAX=${CRAWLER_SYNC_DELAY_MAX:-0.8}
+      
+      # ========== 功能开关 ==========
+      - SAFE_MODE=${SAFE_MODE:-false}
+      - AUTO_CRAWL_ENABLED=${AUTO_CRAWL_ENABLED:-false}
+      - AUTO_CRAWL_TIME=${AUTO_CRAWL_TIME:-03:00}
+      
+      # ========== 高级配置 ==========
+      - GLOBAL_ERROR_THRESHOLD=${GLOBAL_ERROR_THRESHOLD:-300}
+      - TZ_OFFSET_HOURS=${TZ_OFFSET_HOURS:-0}
+      
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# 使用说明：
+# 1. 复制此文件为 docker-compose.yml
+# 2. 创建 .env 文件填入你的配置值
+# 3. 运行 docker-compose up -d
+# 
+# 或在命令行指定：
+#   TG_BOT_TOKEN=xxx PROXY=http://xxx docker-compose up -d
