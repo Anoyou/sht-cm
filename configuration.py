@@ -27,7 +27,8 @@ class UnifiedConfigManager:
     """
     _instance = None
     _lock = threading.RLock()
-    
+    _pid = None  # 记录进程 ID，用于检测 fork
+
     def __new__(cls):
         if cls._instance is None:
             with cls._lock:
@@ -35,19 +36,34 @@ class UnifiedConfigManager:
                     cls._instance = super(UnifiedConfigManager, cls).__new__(cls)
                     cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
-        if self._initialized:
+        # 检测是否是新进程
+        current_pid = os.getpid()
+        if self._initialized and self._pid == current_pid:
             return
-            
+
+        # 新进程或首次初始化
+        if self._initialized:
+            logger.warning(f"检测到进程变化 {self._pid} -> {current_pid}，重新初始化配置管理器")
+            self._initialized = False
+
         self._initialized = True
-        
+        self._pid = current_pid
+
         # 简单内存缓存，减少IO
         self._get_cache = {}
         self._last_cache_clear = time.time()
-        
-        # 确定路径
-        self.is_docker = os.path.exists('/app/data')
+
+        # 确定路径（更严格的 Docker 检测）
+        # Docker 环境通常有以下特征之一：
+        # 1. /.dockerenv 文件存在
+        # 2. /proc/1/cgroup 包含 docker 字符串
+        # 3. 环境变量包含容器标记
+        has_docker_env = os.path.exists('/.dockerenv') or 'docker' in os.environ.get('PATH', '').lower()
+        has_app_data = os.path.exists('/app/data')
+        self.is_docker = has_docker_env and has_app_data
+
         if self.is_docker:
             self.data_dir = '/app/data'
             self.config_dir = '/app/data/config'
@@ -67,7 +83,7 @@ class UnifiedConfigManager:
             self.old_crawl_config_file = os.path.join(self.data_dir, 'crawl_config.json')
             self.log_dir = os.path.join(self.data_dir, 'logs')
             self.db_path = os.path.join(self.data_dir, 'sht.db')
-            
+
         # 确保目录存在
         os.makedirs(self.config_dir, exist_ok=True)
         os.makedirs(self.log_dir, exist_ok=True)
@@ -563,33 +579,28 @@ class Config:
     # --- 静态/只读配置 ---
     IS_DOCKER = _mgr.is_docker
     DEFAULT_DB_PATH = _mgr.db_path
-    
-    # 绝对路径处理：确保包含空格和特殊字符的路径在 SQLALCHEMY URI 中可用
-    db_path_abs = os.path.abspath(_mgr.db_path)
-    # macOS/Linux 的绝对路径在 sqlite URI 中应以四个斜杠开头: sqlite:////absolute/path
-    # 且路径需要进行 URL 编码以处理空格
-    from urllib.parse import quote
-    encoded_path = quote(db_path_abs)
-    
-    # 构造安全的 URI
+
+    # 构造安全的 SQLite URI
     if os.environ.get('DATABASE_URL'):
         SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     else:
-        # 兼容性处理：如果路径本身就是绝对路径（/开头），使用 4 个斜杠
-        if db_path_abs.startswith('/'):
-            SQLALCHEMY_DATABASE_URI = f'sqlite:////{db_path_abs}'
+        db_path_abs = os.path.abspath(_mgr.db_path)
+        # SQLite URI 格式：sqlite:///path/to/file.db（三个斜杠）
+        # 如果路径包含空格或特殊字符，需要进行 URL 编码
+        from urllib.parse import quote
+        if ' ' in db_path_abs or any(ord(c) > 127 for c in db_path_abs):
+            encoded_path = quote(db_path_abs)
+            SQLALCHEMY_DATABASE_URI = f'sqlite:///{encoded_path}'
         else:
             SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path_abs}'
-    
+
     logger.debug(f"🛠️ [DB-CONFIG] 数据库 URI: {SQLALCHEMY_DATABASE_URI}")
 
-    # SQLite 配置，避免并发写入导致的 I/O 错误
+    # SQLite 配置，使用 NullPool 避免连接池问题
+    # SQLite 不需要连接池，使用 NullPool 可以避免文件锁定问题
+    from sqlalchemy.pool import NullPool
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': 10,
-        'pool_recycle': 120,
-        'pool_pre_ping': True,
-        'pool_timeout': 30,
-        'max_overflow': 20,
+        'poolclass': NullPool,
         'echo': False
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False

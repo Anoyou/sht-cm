@@ -1,6 +1,6 @@
 // Service Worker for SHT资源爬取管理平台
-const CACHE_NAME = 'sht-manager-v1.0.9';
-const STATIC_CACHE_NAME = 'sht-static-v1.0.9';
+const CACHE_NAME = 'sht-manager-v1.1.1';
+const STATIC_CACHE_NAME = 'sht-static-v1.1.1';
 
 // 需要缓存的静态资源
 const STATIC_ASSETS = [

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 主应用程序入口 - 整合 Web UI、API 路由、后台任务管理和蓝图注册
-v1.3.0 - 模块化架构，使用 Flask Blueprint 组织代码、支持异步多线程爬虫、支持 PWA
+模块化架构，使用 Flask Blueprint 组织代码、支持异步多线程爬虫、支持 PWA
 """
 
 import os
@@ -84,22 +84,21 @@ def create_app(enable_background_services: bool = True, enable_task_manager: boo
     setup_logging(app)
 
     # 初始化数据库
+    logger.info(f"📍 数据库 URI: {app.config.get('SQLALCHEMY_DATABASE_URI', '')}")
+    logger.info(f"📍 数据库引擎选项: {app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {})}")
     db.init_app(app)
 
     # 判定当前环境：隔离 Flask Reloader 的父进程
     is_worker_process = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
     is_reloader_parent = not is_worker_process and (os.environ.get('FLASK_DEBUG') == '1' or app.debug)
-    
-    # 路径安全处理 (针对 338MB 大文件及中文路径)
+
+    # SQLite 超时配置（避免并发写入超时）
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-    if 'sqlite' in db_uri:
-        # 解析出原始路径，重新构建带编码的 URI
-        raw_path = db_uri.replace('sqlite:///', '').split('?')[0]
-        from urllib.parse import quote
-        # 确保去掉可能残留的多余斜杠并重新 quote
-        clean_path = os.path.abspath(raw_path)
-        app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{clean_path}?timeout=60"
-        logger.debug(f"📍 数据库 URI 已校正: {app.config['SQLALCHEMY_DATABASE_URI']}")
+    if 'sqlite' in db_uri and '?timeout=' not in db_uri:
+        # 添加超时参数
+        separator = '&' if '?' in db_uri else '?'
+        app.config['SQLALCHEMY_DATABASE_URI'] = f"{db_uri}{separator}timeout=60"
+        logger.debug(f"📍 数据库 URI 已添加超时配置: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
     with app.app_context():
         # 如果是调试模式下的父进程，绝对不初始化数据库
