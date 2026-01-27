@@ -1,4 +1,4 @@
-# SHT 资源爬取管理平台
+# SHT 资源爬取管理平台 ｜ SHT Crawler & Management
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-2.x-green.svg)](https://flask.palletsprojects.com/)
