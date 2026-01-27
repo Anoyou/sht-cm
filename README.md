@@ -172,16 +172,12 @@ docker-compose logs -f web
 
 本项目内置 SHT2BM API 接口，可作为 BM 的数据源使用。
 
-### 使用方法
+### API链接为：
 
 ```
-http://[本项目IP]:5000/api/bt?keyword=搜索关键词
+http://[本项目IP]:5000/api/bt?keyword
 ```
 
-**示例：**
-```
-http://10.10.8.173:5000/api/bt?keyword=国产
-```
 
 ### ⚠️ 安全提示
 
@@ -191,10 +187,8 @@ http://10.10.8.173:5000/api/bt?keyword=国产
 
 ### 配置 BM
 
-在 BM 数据源配置中添加：
 ```
-名称：SHT本地
-地址：http://[IP]:5000/api/bt
+略，不适合在此讨论。
 ```
 
 ## 🤝 贡献
