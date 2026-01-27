@@ -1,0 +1,297 @@
+/* 首页特定样式 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--border-radius-xl);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    padding: 1.5rem 1rem;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    /* 高度适中：从 120px 降至 100px，保证呼吸感 */
+    min-height: 100px;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-card-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.stat-card-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.25;
+    /* 增加行高，提升易读性 */
+    gap: 0.25rem;
+    /* 增加间距 */
+}
+
+.stat-card-label {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.stat-card-value {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+    /* 移除 margin，由 gap 控制 */
+}
+
+.stat-card-desc {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin: 0;
+    /* 移除 margin，由 gap 控制 */
+    text-align: center;
+}
+
+/* 彩色主题 */
+.text-rose-500 {
+    color: var(--rose-500);
+}
+
+.text-emerald-500 {
+    color: var(--emerald-500);
+}
+
+.text-violet-500 {
+    color: var(--violet-500);
+}
+
+.text-blue-500 {
+    color: var(--blue-500);
+}
+
+.text-amber-500 {
+    color: var(--amber-500);
+}
+
+/* 配置信息卡片 */
+.config-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--border-radius-xl);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.config-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.config-card h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.config-item:last-child {
+    border-bottom: none;
+}
+
+/* 系统状态网格 */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    background: rgba(var(--foreground-rgb, 0, 0, 0), 0.05);
+    border-radius: var(--border-radius);
+
+}
+
+.status-label {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.status-icon {
+    font-size: 1.2rem;
+}
+
+@media (max-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .status-grid {
+        /* 移动端两两成一行 */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    /* 移动端状态卡片内部布局进一步优化 - 垂直排列 */
+    @media (max-width: 640px) {
+        .status-item {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            min-height: 80px !important;
+            padding: 1rem 0.75rem !important;
+        }
+
+        .status-label {
+            font-size: 0.75rem !important;
+            width: 100% !important;
+        }
+
+        .status-value {
+            font-size: 0.625rem !important;
+            /* 增大数值字号，iOS 风格加粗点 */
+            font-weight: 700 !important;
+        }
+    }
+
+    /* 平板/大屏手机保持水平排列但优化间距 */
+    @media (min-width: 641px) and (max-width: 1024px) {
+        .status-item {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            min-height: 50px;
+        }
+
+        .status-value {
+            font-size: 0.675rem;
+            font-weight: 700;
+        }
+    }
+
+    .home-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* PWA 模式下的强制布局优化 */
+html.pwa-mode .status-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 首页按钮组移动端优化 */
+@media (max-width: 768px) {
+    .home-actions {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+
+    .home-actions>div:last-child {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+
+    .home-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ==================== 板块信息展示 (Replica from Crawler Page) ==================== */
+.forum-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+/* 移动端优化:每行两个板块 */
+@media (max-width: 768px) {
+    .forum-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+}
+
+.forum-card {
+    background: rgba(var(--foreground-rgb, 0, 0, 0), 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius-lg);
+    padding: 0.75rem;
+    transition: var(--transition);
+    position: relative;
+    /* Removed cursor: pointer to indicate read-only */
+}
+
+/* 简单的悬停效果，仅轻微变色，不暗示点击 */
+.forum-card:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+    border-color: var(--muted-foreground);
+}
+
+.forum-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.forum-name {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    line-height: 1.2;
+}
+
+.forum-fid {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.forum-stats {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}

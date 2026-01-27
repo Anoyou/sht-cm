@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% block title %}服务管理 - SHT{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 服务页面特定样式 */
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .service-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        border-radius: var(--border-radius-xl);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        padding: 1.5rem;
+        transition: var(--transition);
+    }
+
+    .service-card:hover {
+        box-shadow: var(--shadow-md);
+    }
+
+    .service-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .service-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--foreground);
+        margin: 0;
+    }
+
+    .service-type {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--border-radius);
+        font-weight: 500;
+    }
+
+    .service-type.service {
+        background: var(--blue-100);
+        color: var(--blue-700);
+    }
+
+    .service-type.scheduled {
+        background: var(--purple-100);
+        color: var(--purple-700);
+    }
+
+    .service-type.periodic {
+        background: var(--green-100);
+        color: var(--green-700);
+    }
+
+    .service-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .status-running {
+        background: var(--emerald-500);
+    }
+
+    .status-paused {
+        background: var(--amber-500);
+    }
+
+    .status-stopped {
+        background: var(--muted-foreground);
+    }
+
+    .status-error {
+        background: var(--destructive);
+    }
+
+    .service-description {
+        font-size: 0.875rem;
+        color: var(--muted-foreground);
+        margin-bottom: 1rem;
+        line-height: 1.4;
+    }
+
+    .service-details {
+        font-size: 0.75rem;
+        color: var(--muted-foreground);
+        margin-bottom: 1rem;
+    }
+
+    .service-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        margin-top: 1rem;
+    }
+
+    /* 任务详情展开区域 */
+    .task-details {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--muted);
+        border-radius: var(--border-radius);
+        border-left: 3px solid var(--primary);
+        display: none;
+    }
+
+    .task-details.expanded {
+        display: block;
+    }
+
+    .task-details h6 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--foreground);
+    }
+
+    .task-details p {
+        font-size: 0.75rem;
+        color: var(--muted-foreground);
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+
+    /* 统计卡片 */
+    .stats-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    /* 移动端优化：统计卡片在同一行 */
+    @media (max-width: 768px) {
+        .stats-overview {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            padding: 0.75rem 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 1.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.6875rem;
+        }
+    }
+
+    /* iPhone 专用优化 - 确保在所有iPhone设备上保持移动端布局 */
+    @media only screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2),
+    only screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3),
+    only screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3),
+    only screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2),
+    only screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3),
+    only screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3),
+    only screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3),
+    only screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3),
+    only screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) {
+
+        /* 强制应用移动端布局 */
+        .stats-overview {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 0.5rem !important;
+            margin-bottom: 1.5rem !important;
+        }
+
+        .stat-card {
+            padding: 0.75rem 0.5rem !important;
+        }
+
+        .stat-number {
+            font-size: 1.25rem !important;
+        }
+
+        .stat-label {
+            font-size: 0.6875rem !important;
+        }
+    }
+
+    /* 超小屏幕设备优化 */
+    @media (max-width: 480px) {
+        .stats-overview {
+            gap: 0.25rem;
+        }
+
+        .stat-card {
+            padding: 0.5rem 0.25rem;
+        }
+
+        .stat-number {
+            font-size: 1.125rem;
+        }
+
+        .stat-label {
+            font-size: 0.625rem;
+            line-height: 1.2;
+        }
+    }
+
+    .stat-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        border-radius: var(--border-radius-xl);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--glass-shadow);
+        padding: 1rem;
+        text-align: center;
+        transition: var(--transition);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--muted-foreground);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .stat-running .stat-number {
+        color: var(--emerald-500);
+    }
+
+    .stat-paused .stat-number {
+        color: var(--amber-500);
+    }
+
+    .stat-stopped .stat-number {
+        color: var(--muted-foreground);
+    }
+
+    .stat-error .stat-number {
+        color: var(--destructive);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">服务管理</h1>
+
+<!-- 统计概览 -->
+<div class="stats-overview">
+    <div class="stat-card stat-running">
+        <div class="stat-number" id="runningCount">0</div>
+        <div class="stat-label">运行中</div>
+    </div>
+    <div class="stat-card stat-paused">
+        <div class="stat-number" id="pausedCount">0</div>
+        <div class="stat-label">已暂停</div>
+    </div>
+    <div class="stat-card stat-stopped">
+        <div class="stat-number" id="stoppedCount">0</div>
+        <div class="stat-label">已停止</div>
+    </div>
+    <div class="stat-card stat-error">
+        <div class="stat-number" id="errorCount">0</div>
+        <div class="stat-label">异常</div>
+    </div>
+</div>
+
+<!-- 页面操作 -->
+<div class="service-card" style="margin-bottom: 1.5rem; padding: 1rem 1.5rem;">
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button onclick="refreshTasks()" class="btn btn-primary">
+            刷新状态
+        </button>
+        <button onclick="pauseAllTasks()" class="btn btn-warning">
+            暂停全部
+        </button>
+        <button onclick="resumeAllTasks()" class="btn btn-success">
+            恢复全部
+        </button>
+    </div>
+</div>
+
+<!-- 服务列表 -->
+<div class="services-grid" id="services-container">
+    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+        正在加载服务列表...
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    let tasksData = [];
+    let taskStates = {}; // 存储任务的暂停状态
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // 加载任务状态
+        loadTaskStates();
+
+        // 加载任务数据
+        loadTasks();
+
+        // 设置定时刷新
+        setInterval(loadTasks, 10000); // 每10秒刷新一次
+    });
+
+    // 加载任务状态（从localStorage）
+    function loadTaskStates() {
+        try {
+            const saved = localStorage.getItem('taskStates');
+            if (saved) {
+                taskStates = JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('无法加载任务状态:', error);
+            taskStates = {};
+        }
+    }
+
+    // 保存任务状态（到localStorage）
+    function saveTaskStates() {
+        try {
+            localStorage.setItem('taskStates', JSON.stringify(taskStates));
+        } catch (error) {
+            console.warn('无法保存任务状态:', error);
+        }
+    }
+
+    // 加载任务数据
+    async function loadTasks() {
+        try {
+            const response = await fetch('/api/tasks/status');
+
+            // 如果任务管理器不可用（503），显示友好提示
+            if (response.status === 503) {
+                const data = await response.json();
+                showNotification('任务管理器已停用: ' + data.message, 'warning');
+                tasksData = [];
+                renderTasks();
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            tasksData = data.tasks || [];
+
+            renderTasks();
+            updateStatusCounts();
+
+        } catch (error) {
+            console.error('加载任务数据失败:', error);
+            showNotification('加载任务数据失败: ' + error.message, 'error');
+            tasksData = [];
+            renderTasks();
+        }
+    }
+
+    // 渲染任务列表
+    function renderTasks() {
+        const container = document.getElementById('services-container');
+        container.innerHTML = '';
+
+        if (tasksData.length === 0) {
+            container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                暂无任务数据
+            </div>
+        `;
+            return;
+        }
+
+        // 按任务类型分组
+        const taskGroups = groupTasksByType(tasksData);
+        const typeOrder = ['service', 'periodic', 'scheduled', 'manual'];
+
+        typeOrder.forEach(type => {
+            if (taskGroups[type] && taskGroups[type].length > 0) {
+                taskGroups[type].forEach(task => {
+                    const taskCard = createTaskCard(task);
+                    container.appendChild(taskCard);
+                });
+            }
+        });
+    }
+
+    // 按类型分组任务
+    function groupTasksByType(tasks) {
+        const groups = {
+            service: [],
+            periodic: [],
+            scheduled: [],
+            manual: []
+        };
+
+        tasks.forEach(task => {
+            const type = task.type || 'manual';
+            if (groups[type]) {
+                groups[type].push(task);
+            }
+        });
+
+        // 每组内按名称排序
+        Object.keys(groups).forEach(type => {
+            groups[type].sort((a, b) => a.name.localeCompare(b.name));
+        });
+
+        return groups;
+    }
+
+    // 创建任务卡片
+    function createTaskCard(task) {
+        const card = document.createElement('div');
+        card.className = 'service-card';
+        card.dataset.taskId = task.id;
+
+        const isPaused = taskStates[task.id]?.paused || false;
+        const actualStatus = isPaused ? 'paused' : task.status;
+        const statusClass = getStatusClass(actualStatus);
+        const statusText = getStatusText(actualStatus);
+        const typeInfo = getTypeInfo(task.type);
+
+        const lastRun = task.last_run ? formatDateTime(task.last_run) : '从未运行';
+        const nextRun = task.next_run ? formatDateTime(task.next_run) : '无计划';
+
+        card.innerHTML = `
+        <div class="service-header">
+            <h3 class="service-title">${task.name}</h3>
+            <span class="service-type ${typeInfo.class}">${typeInfo.text}</span>
+        </div>
+        
+        <div class="service-status">
+            <div class="status-indicator ${statusClass}"></div>
+            <span>${statusText}</span>
+            ${task.error_message ? '<span style="color: var(--destructive); margin-left: 0.5rem;" title="有错误信息"></span>' : ''}
+        </div>
+        
+        <div class="service-description">
+            ${task.description}
+        </div>
+        
+        <div class="service-details">
+            <div>来源: ${task.source_file}</div>
+            <div>运行次数: ${task.run_count}</div>
+            <div>上次运行: ${lastRun}</div>
+            <div>下次运行: ${nextRun}</div>
+        </div>
+        
+        <div class="service-actions">
+            ${task.manual_executable ? `<button class="btn btn-success" onclick="executeTask('${task.id}')" ${actualStatus === 'running' ? 'disabled' : ''}>执行</button>` : ''}
+            ${isPaused ? `<button class="btn btn-primary" onclick="resumeTask('${task.id}')">恢复</button>` : `<button class="btn btn-warning" onclick="pauseTask('${task.id}')">暂停</button>`}
+            <button class="btn btn-purple" onclick="toggleTaskDetails('${task.id}')">详情</button>
+        </div>
+        
+        <!-- 任务详情 - 加入动画容器 -->
+        <div id="details-wrapper-${task.id}" class="collapsible-wrapper">
+            <div class="collapsible-inner">
+                <div class="task-details" id="details-${task.id}" style="display: block;">
+                    <h6>详细信息</h6>
+                    <p><strong>任务ID:</strong> ${task.id}</p>
+                    <p><strong>任务类型:</strong> ${typeInfo.text}</p>
+                    <p><strong>可手动执行:</strong> ${task.manual_executable ? '是' : '否'}</p>
+                    ${task.interval ? `<p><strong>执行间隔:</strong> ${task.interval} 秒</p>` : ''}
+                    ${task.schedule_time ? `<p><strong>计划时间:</strong> ${task.schedule_time}</p>` : ''}
+                    ${task.error_message ? `
+                        <div style="margin-top: 1rem; padding: 0.5rem; background: var(--destructive); color: white; border-radius: var(--border-radius); font-size: 0.75rem;">
+                            <strong>错误信息:</strong><br>
+                            ${task.error_message}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+
+        return card;
+    }
+
+    // 切换任务详情显示
+    function toggleTaskDetails(taskId) {
+        const wrapper = document.getElementById(`details-wrapper-${taskId}`);
+        const button = document.querySelector(`[onclick="toggleTaskDetails('${taskId}')"]`);
+
+        if (wrapper.classList.contains('expanded')) {
+            wrapper.classList.remove('expanded');
+            button.textContent = '详情';
+        } else {
+            wrapper.classList.add('expanded');
+            button.textContent = '收起';
+        }
+    }
+
+    // 暂停任务
+    async function pauseTask(taskId) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/pause`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                // 更新本地状态
+                taskStates[taskId] = { paused: true, pausedAt: new Date().toISOString() };
+                saveTaskStates();
+
+                // 刷新显示
+                renderTasks();
+                updateStatusCounts();
+                showNotification(`任务 "${result.task_name}" 已暂停`, 'success');
+
+                // 延迟刷新任务状态，确保后端任务有时间停止
+                setTimeout(loadTasks, 2000);
+            } else {
+                showNotification(`暂停任务失败: ${result.message}`, 'error');
+            }
+
+        } catch (error) {
+            console.error('暂停任务失败:', error);
+            showNotification('暂停任务失败: ' + error.message, 'error');
+        }
+    }
+
+    // 恢复任务
+    async function resumeTask(taskId) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/resume`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                // 更新本地状态 - 完全移除暂停状态
+                if (taskStates[taskId]) {
+                    delete taskStates[taskId];
+                    saveTaskStates();
+                }
+
+                // 刷新显示
+                renderTasks();
+                updateStatusCounts();
+                showNotification(`任务 "${result.task_name}" 已恢复`, 'success');
+
+                // 延迟刷新任务状态，确保后端任务有时间启动
+                setTimeout(loadTasks, 2000);
+            } else {
+                showNotification(`恢复任务失败: ${result.message}`, 'error');
+            }
+
+        } catch (error) {
+            console.error('恢复任务失败:', error);
+            showNotification('恢复任务失败: ' + error.message, 'error');
+        }
+    }
+
+    // 暂停所有任务
+    function pauseAllTasks() {
+        tasksData.forEach(task => {
+            if (!taskStates[task.id]?.paused) {
+                taskStates[task.id] = { paused: true, pausedAt: new Date().toISOString() };
+            }
+        });
+        saveTaskStates();
+        renderTasks();
+        updateStatusCounts();
+        showNotification('所有任务已暂停', 'success');
+    }
+
+    // 恢复所有任务
+    function resumeAllTasks() {
+        taskStates = {};
+        saveTaskStates();
+        renderTasks();
+        updateStatusCounts();
+        showNotification('所有任务已恢复', 'success');
+    }
+
+    // 执行任务
+    async function executeTask(taskId) {
+        // 检查任务是否被暂停
+        if (taskStates[taskId]?.paused) {
+            showNotification('任务已暂停，请先恢复后再执行', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/execute`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                showNotification(`任务 "${result.task_name}" 已开始执行`, 'success');
+                // 延迟刷新，让任务有时间启动
+                setTimeout(loadTasks, 2000);
+            } else {
+                showNotification(`执行任务失败: ${result.message}`, 'error');
+            }
+
+        } catch (error) {
+            console.error('执行任务失败:', error);
+            showNotification('执行任务失败: ' + error.message, 'error');
+        }
+    }
+
+    // 刷新任务状态
+    function refreshTasks() {
+        loadTasks();
+        showNotification('任务状态已刷新', 'info');
+    }
+
+    // 更新状态统计
+    function updateStatusCounts() {
+        const counts = {
+            running: 0,
+            paused: 0,
+            stopped: 0,
+            error: 0
+        };
+
+        tasksData.forEach(task => {
+            if (taskStates[task.id]?.paused) {
+                counts.paused++;
+            } else if (task.status === 'running') {
+                counts.running++;
+            } else if (task.status === 'stopped') {
+                counts.stopped++;
+            } else if (task.status === 'error') {
+                counts.error++;
+            }
+        });
+
+        document.getElementById('runningCount').textContent = counts.running;
+        document.getElementById('pausedCount').textContent = counts.paused;
+        document.getElementById('stoppedCount').textContent = counts.stopped;
+        document.getElementById('errorCount').textContent = counts.error;
+    }
+
+    // 获取任务类型信息
+    function getTypeInfo(type) {
+        const typeMap = {
+            'service': { text: '服务', class: 'service' },
+            'periodic': { text: '周期', class: 'periodic' },
+            'scheduled': { text: '定时', class: 'scheduled' },
+            'manual': { text: '手动', class: 'manual' }
+        };
+        return typeMap[type] || { text: '未知', class: 'manual' };
+    }
+
+    // 获取状态样式类
+    function getStatusClass(status) {
+        const classes = {
+            'running': 'status-running',
+            'paused': 'status-paused',
+            'stopped': 'status-stopped',
+            'error': 'status-error'
+        };
+        return classes[status] || 'status-stopped';
+    }
+
+    // 获取状态文本
+    function getStatusText(status) {
+        const texts = {
+            'running': '运行中',
+            'paused': '已暂停',
+            'stopped': '已停止',
+            'error': '异常'
+        };
+        return texts[status] || '未知';
+    }
+
+    // 格式化日期时间
+    function formatDateTime(isoString) {
+        try {
+            const date = new Date(isoString);
+            return date.toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return '无效时间';
+        }
+    }
+
+    // 显示通知
+    function showNotification(message, type = 'info') {
+        // 这里可以使用全局的通知函数
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+        } else {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+    }
+</script>
+{% endblock %}

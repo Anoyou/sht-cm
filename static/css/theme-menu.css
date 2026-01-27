@@ -1,0 +1,75 @@
+/* 主题切换菜单样式 */
+.theme-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.theme-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: 150px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+    z-index: 1000;
+
+    /* 动画 */
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+
+.theme-menu.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+}
+
+.theme-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--foreground);
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    transition: background-color 0.15s ease;
+}
+
+.theme-menu-item:hover {
+    background: var(--muted);
+}
+
+.theme-menu-item.active {
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 500;
+}
+
+.theme-menu-item svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+}
+
+.theme-menu-item.active svg {
+    opacity: 1;
+}
+
+/* 适配 iOS PWA: 确保菜单在浮动层上且不被切断 */
+@media (max-width: 640px) {
+    .theme-menu {
+        right: -0.5rem;
+        /* 微调以防太靠边 */
+        width: 140px;
+    }
+}

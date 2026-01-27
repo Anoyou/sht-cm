@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - SHT资源爬取管理平台{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/index.css">
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">首页</h1>
+
+<!-- 统计卡片 -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-content">
+            <div class="stat-card-info">
+                <div class="stat-card-label">总资源数</div>
+                <div class="stat-card-value text-rose-500" id="total-count">0</div>
+                <div class="stat-card-desc">爬到这么多资源了！</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-content">
+            <div class="stat-card-info">
+                <div class="stat-card-label">今日新增</div>
+                <div class="stat-card-value text-emerald-500" id="today-count">0</div>
+                <div class="stat-card-desc">今天爬到的资源</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-content">
+            <div class="stat-card-info">
+                <div class="stat-card-label">近7日新增</div>
+                <div class="stat-card-value text-violet-500" id="recent-count">0</div>
+                <div class="stat-card-desc text-violet-500">最近一周的资源增长量</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-content">
+            <div class="stat-card-info">
+                <div class="stat-card-label">最近新增</div>
+                <div class="stat-card-value text-blue-500" id="last-crawl-stats">-</div>
+                <div class="stat-card-desc text-blue-500" id="last-crawl-desc">最近一次爬虫结果</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 系统状态卡片 -->
+<div class="config-card">
+    <h3>系统状态</h3>
+    <div class="status-grid">
+        <div class="status-item">
+            <div class="status-label">
+                <span class="status-icon"></span>
+                <span>爬虫状态</span>
+            </div>
+            <span id="crawl-status-text" class="status-value">未知</span>
+        </div>
+        <div class="status-item">
+            <div class="status-label">
+                <span class="status-icon"></span>
+                <span>数据库</span>
+            </div>
+            <span id="db-status-text" class="status-value">检测中</span>
+        </div>
+        <div class="status-item">
+            <div class="status-label">
+                <span class="status-icon"></span>
+                <span>SHT2BM</span>
+            </div>
+            <span id="sht2bm-status-text" class="status-value">检测中</span>
+        </div>
+        <div class="status-item">
+            <div class="status-label">
+                <span class="status-icon"></span>
+                <span>Telegram Bot</span>
+            </div>
+            <span id="tg-status-text" class="status-value">检测中</span>
+        </div>
+    </div>
+    <!-- 
+    <div class="home-actions"
+        style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+        <div></div> 
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button id="refreshStatsBtn" class="btn btn-primary" title="刷新统计数据">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-3.6-7.2"></path>
+                    <polyline points="21 3 21 9 15 9"></polyline>
+                </svg>
+                刷新数据
+            </button>
+            <a href="/crawler" class="btn btn-pink">爬虫控制</a>
+            <a href="/config" class="btn btn-purple">系统配置</a>
+        </div>
+    </div>
+    -->
+</div>
+
+<!-- 板块信息卡片 (仅查看) -->
+<div class="config-card">
+    <h3>
+        <span class="status-icon">📑</span>
+        <span>板块资源概览</span>
+    </h3>
+    <div id="home-forum-list" class="forum-grid">
+        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+            正在加载板块列表...
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 首页特定的JavaScript
+    document.addEventListener('DOMContentLoaded', function () {
+        loadStats();
+        loadSystemStatus();
+        loadLastCrawlStats();
+        loadForumInfo();
+
+        // 定期更新状态
+        setInterval(() => {
+            loadSystemStatus();
+            loadLastCrawlStats();
+        }, 30000); // 30秒更新一次
+
+        // 添加手动刷新按钮事件
+        const refreshStatsBtn = document.getElementById('refreshStatsBtn');
+        if (refreshStatsBtn) {
+            refreshStatsBtn.addEventListener('click', function () {
+                // 显示刷新提示
+                showToast('正在刷新数据...', 'info');
+
+                loadStats();
+                loadSystemStatus();
+                loadLastCrawlStats();
+                loadForumInfo();
+
+                // 按钮动画
+                this.style.transform = 'rotate(360deg)';
+                this.style.transition = 'transform 0.6s ease';
+                setTimeout(() => {
+                    this.style.transform = '';
+                    showToast('数据已刷新', 'success');
+                }, 600);
+            });
+        }
+    });
+
+    // 加载统计信息
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const stats = await response.json();
+
+            const totalEl = document.getElementById('total-count');
+            const todayEl = document.getElementById('today-count');
+            const recentEl = document.getElementById('recent-count');
+
+            if (totalEl) totalEl.textContent = stats.total_count || 0;
+            if (todayEl) todayEl.textContent = stats.today_count || 0;
+            if (recentEl) recentEl.textContent = stats.recent_count || 0;
+        } catch (error) {
+            console.error('加载统计数据失败:', error);
+        }
+    }
+
+    // 加载系统状态
+    async function loadSystemStatus() {
+        try {
+            const [healthResponse, crawlResponse] = await Promise.all([
+                fetch('/api/health'),
+                fetch('/api/crawl/status')
+            ]);
+
+            const health = await healthResponse.json();
+            const crawlStatus = await crawlResponse.json();
+
+            // 更新爬虫状态
+            const crawlStatusEl = document.getElementById('crawl-status-text');
+            if (crawlStatusEl) {
+                crawlStatusEl.textContent = crawlStatus.message || '空闲';
+                crawlStatusEl.className = `status-value ${crawlStatus.is_crawling ? 'text-emerald-500' : 'text-muted-foreground'}`;
+            }
+
+            // 更新数据库状态
+            const dbStatusEl = document.getElementById('db-status-text');
+            if (dbStatusEl) {
+                const dbOk = health.database?.status === 'ok';
+                dbStatusEl.textContent = dbOk ? '正常' : '异常';
+                dbStatusEl.className = `status-value ${dbOk ? 'text-emerald-500' : 'text-rose-500'}`;
+            }
+
+            // 更新SHT2BM状态
+            const sht2bmStatusEl = document.getElementById('sht2bm-status-text');
+            if (sht2bmStatusEl && health.sht2bm) {
+                const sht2bmOk = health.sht2bm.status === 'ok';
+                sht2bmStatusEl.textContent = sht2bmOk ? '运行中' : (health.sht2bm.enabled ? '已停止' : '未启用');
+                sht2bmStatusEl.className = `status-value ${sht2bmOk ? 'text-emerald-500' : 'text-muted-foreground'}`;
+            }
+
+            // 更新Telegram Bot状态
+            const tgStatusEl = document.getElementById('tg-status-text');
+            if (tgStatusEl) {
+                const tgEnabled = health.config?.telegram_enabled;
+                tgStatusEl.textContent = tgEnabled ? '已启用' : '未启用';
+                tgStatusEl.className = `status-value ${tgEnabled ? 'text-emerald-500' : 'text-muted-foreground'}`;
+            }
+        } catch (error) {
+            console.error('加载系统状态失败:', error);
+        }
+    }
+
+    // 加载最近爬虫统计
+    async function loadLastCrawlStats() {
+        try {
+            const response = await fetch('/api/crawl/status');
+            const status = await response.json();
+
+            const statsEl = document.getElementById('last-crawl-stats');
+            const descEl = document.getElementById('last-crawl-desc');
+
+            if (status.last_result && status.last_result.total_saved !== undefined) {
+                const result = status.last_result;
+                const saved = result.total_saved || 0;
+                const skipped = result.total_skipped || 0;
+                const failed = result.total_failed || 0;
+
+                if (statsEl) {
+                    if (saved > 0) {
+                        statsEl.textContent = `+${saved}`;
+                        statsEl.className = 'stat-card-value text-emerald-500';
+                    } else if (failed > 0) {
+                        statsEl.textContent = `${failed}失败`;
+                        statsEl.className = 'stat-card-value text-rose-500';
+                    } else {
+                        statsEl.textContent = '0';
+                        statsEl.className = 'stat-card-value text-muted-foreground';
+                    }
+                }
+
+                if (descEl) {
+                    const timestamp = result.timestamp ? new Date(result.timestamp).toLocaleString() : '未知时间';
+                    if (saved > 0 && skipped > 0) {
+                        descEl.textContent = `成功${saved}，跳过${skipped}`;
+                    } else if (saved > 0) {
+                        descEl.textContent = `成功获取${saved}条`;
+                    } else if (failed > 0) {
+                        descEl.textContent = `${failed}个页面失败`;
+                    } else {
+                        descEl.textContent = '暂无新增';
+                    }
+                }
+            } else {
+                if (statsEl) {
+                    statsEl.textContent = '-';
+                    statsEl.className = 'stat-card-value text-muted-foreground';
+                }
+                if (descEl) {
+                    descEl.textContent = '暂无爬取记录';
+                }
+            }
+        } catch (error) {
+            console.error('加载最近爬虫统计失败:', error);
+        }
+    }
+
+    // 加载板块信息（仅查看）
+    async function loadForumInfo() {
+        const listEl = document.getElementById('home-forum-list');
+        if (!listEl) return;
+
+        try {
+            // 并发获取论坛信息和最新统计数据
+            const [forumResponse, statsResponse] = await Promise.all([
+                fetch('/api/forum/info/batch?fast=false&force=false'),
+                fetch('/api/stats/categories')
+            ]);
+
+            if (!forumResponse.ok || !statsResponse.ok) throw new Error('API请求失败');
+
+            const forumData = await forumResponse.json();
+            const statsData = await statsResponse.json();
+
+            if (forumData.status !== 'success' || !forumData.data) {
+                throw new Error(forumData.message || '数据格式错误');
+            }
+
+            const forums = forumData.data;
+            const forumKeys = Object.keys(forums);
+
+            if (forumKeys.length === 0) {
+                listEl.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                        暂无板块数据
+                    </div>
+                `;
+                return;
+            }
+
+            // 处理统计数据
+            const categoryStats = {};
+            const statsPayload = Array.isArray(statsData) ? statsData : (statsData.data || []);
+
+            if (Array.isArray(statsPayload)) {
+                statsPayload.forEach(stat => {
+                    const sectionName = stat.section || stat.name;
+                    if (sectionName && sectionName !== '未知') {
+                        const count = stat.count !== undefined ? stat.count : (stat.resource_count || 0);
+                        categoryStats[sectionName] = count;
+                    }
+                });
+            }
+
+            listEl.innerHTML = '';
+
+            Object.entries(forums).forEach(([fid, info]) => {
+                const forumCard = document.createElement('div');
+                forumCard.className = 'forum-card'; // 使用与爬虫页相同的类名，样式在index.css中重定义为只读
+
+                const localCount = categoryStats[info.name] || 0;
+
+                // 数据字段兼容处理
+                const remoteTopics = info.total_topics ?? info.topics ?? null;
+                const remotePages = info.total_pages ?? info.pages ?? null;
+                const hasWarning = remoteTopics === null || remotePages === null;
+
+                forumCard.innerHTML = `
+                    <div class="forum-card-header">
+                        <div class="forum-name">
+                            ${info.name || `板块${fid}`}
+                            ${hasWarning ? '<span style="color: #f59e0b; margin-left: 0.5rem;" title="数据不完整">⚠️</span>' : ''}
+                        </div>
+                        <div class="forum-fid">FID: ${fid}</div>
+                    </div>
+                    <div class="forum-stats">
+                        <div>远程主题: ${remoteTopics !== null ? remoteTopics : '未知'}</div>
+                        <div>远程页数: ${remotePages !== null ? remotePages : '未知'}</div>
+                        <div>本地主题: <strong style="color: var(--emerald-500);">${localCount}</strong></div>
+                    </div>
+                `;
+
+                listEl.appendChild(forumCard);
+            });
+
+        } catch (error) {
+            console.error('加载板块信息失败:', error);
+            listEl.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--rose-500);">
+                    加载失败: ${error.message}
+                </div>
+            `;
+        }
+    }
+</script>
+{% endblock %}

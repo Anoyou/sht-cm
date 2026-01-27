@@ -1,0 +1,2200 @@
+{% extends "base.html" %}
+
+{% block title %}爬虫控制 - SHT{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/crawler.css">
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">爬虫控制</h1>
+
+<div class="crawler-grid">
+    <!-- 爬虫状态卡片 -->
+    <div class="crawler-card">
+        <h3>爬虫状态</h3>
+        <div class="status-item">
+            <span>当前状态</span>
+            <span id="crawl-status" class="status-badge status-idle">空闲</span>
+        </div>
+        <div class="status-item">
+            <span>上次爬取</span>
+            <span id="last-crawl-time">-</span>
+        </div>
+        <div class="status-item">
+            <span>当前进度</span>
+            <span id="crawl-progress">-</span>
+        </div>
+
+        <!-- 详细进度信息 -->
+        <div id="detailed-progress"
+            style="display: none; margin-top: 1rem; padding: 1rem; background: var(--muted); border-radius: var(--border-radius);">
+            <div style="font-size: 0.875rem; margin-bottom: 0.5rem;">
+                <strong id="current-section">-</strong>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--muted-foreground);">
+                <div id="page-progress">-</div>
+                <div id="save-progress">-</div>
+            </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-container" id="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">准备中...</div>
+        </div>
+
+        <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+            <button id="crawlBtn" onclick="startCrawl()" class="btn btn-success">开始爬取</button>
+            <button id="pauseBtn" onclick="pauseCrawl()" class="btn btn-warning" style="display: none;">暂停</button>
+            <button id="resumeBtn" onclick="resumeCrawl()" class="btn btn-success" style="display: none;">继续</button>
+            <button id="stopBtn" onclick="stopCrawl()" class="btn btn-pink" style="display: none;">停止</button>
+            <button id="forceClearBtn" onclick="forceClearTask()" class="btn btn-destructive" style="display: none;"
+                title="强制重置爬虫状态">强制清除</button>
+        </div>
+    </div>
+
+    <!-- 最近爬取结果卡片 -->
+    <div class="crawler-card" id="crawl-results-card">
+        <h3>最近爬取结果</h3>
+        <div id="crawl-results-content">
+            <div style="text-align: center; color: var(--muted-foreground); padding: 2rem;">
+                暂无爬取记录
+            </div>
+        </div>
+        <div style="text-align: right; margin-top: 1rem;">
+            <button onclick="refreshCrawlResults()" class="btn btn-primary">刷新结果</button>
+            <button onclick="clearCrawlResults()" class="btn btn-destructive">清除结果</button>
+        </div>
+    </div>
+
+    <!-- 爬虫配置卡片 -->
+    <div class="crawler-card">
+        <h3>手动爬取配置</h3>
+
+        <div class="config-options">
+            <div class="config-field">
+                <label for="dateMode">时间范围</label>
+                <select id="dateMode" onchange="saveCrawlConfig()">
+                    <option value="all">全部时间</option>
+                    <option value="1day">一天</option>
+                    <option value="2days">两天</option>
+                    <option value="1week">一周</option>
+                    <option value="1month">一个月</option>
+                    <option value="3months">三个月</option>
+                    <option value="6months">半年</option>
+                    <option value="1year">一年</option>
+                </select>
+            </div>
+
+            <div class="config-field">
+                <label for="pageMode">页数模式</label>
+                <select id="pageMode" onchange="togglePageConfig()">
+                    <option value="fixed">固定页数</option>
+                    <option value="full">全部页面</option>
+                    <option value="range">指定范围</option>
+                </select>
+            </div>
+
+            <div class="config-field" id="fixedPagesField">
+                <label for="maxPages">最大页数</label>
+                <input type="number" id="maxPages" min="1" max="100" value="3" onchange="saveCrawlConfig()">
+            </div>
+
+            <div class="config-field" id="rangePagesField" style="display: none;">
+                <label>页码范围</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="number" id="startPage" min="1" placeholder="起始" class="form-input" style="width: 80px;"
+                        onchange="saveCrawlConfig()">
+                    <span>至</span>
+                    <input type="number" id="endPage" min="1" placeholder="结束" class="form-input" style="width: 80px;"
+                        onchange="saveCrawlConfig()">
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right; margin-top: 1rem;">
+            <button onclick="saveCrawlConfig(true)" class="btn btn-purple">手动保存配置</button>
+            <span id="config-save-status"
+                style="margin-left: 0.5rem; color: var(--muted-foreground); font-size: 0.875rem;"></span>
+        </div>
+    </div>
+</div>
+
+<!-- 板块选择区域 -->
+<div class="crawler-card" style="margin-top: 1.5rem;">
+    <h3>选择需要爬取的板块</h3>
+    <div class="forum-selection">
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <button onclick="selectAllForums()" class="btn btn-pink">全选</button>
+            <button onclick="clearAllForums()" class="btn btn-pink">清空</button>
+            <button onclick="loadForumCache()" class="btn btn-primary">
+                读取缓存
+            </button>
+            <button onclick="loadForumList()" class="btn btn-purple">
+                <span class="d-none d-sm-inline">同步SHT主题和页数</span>
+                <span class="d-inline d-sm-none">同步论坛</span>
+            </button>
+        </div>
+        <div class="sync-warning-row">
+            <span id="sync-warning" class="sync-warning-badge" style="display: none;">
+                <span class="warning-icon">⚠️</span>
+                <span class="warning-text">板块信息不完整，需要同步</span>
+            </span>
+        </div>
+
+        <div id="forum-list" class="forum-grid">
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                正在加载板块列表...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 失败TID管理区域 -->
+<div class="crawler-card" style="margin-top: 1.5rem;">
+    <h3>失败的TID重试管理</h3>
+    <div class="failed-tid-content">
+        <!-- 统计信息 -->
+        <div class="failed-tid-stats-section">
+            <h4>失败统计</h4>
+            <div class="failed-tid-stats-grid">
+                <div class="failed-tid-stat-item">
+                    <span class="failed-tid-stat-number stat-pending" id="pending-count">-</span>
+                    <span class="failed-tid-stat-label">待重试</span>
+                </div>
+                <div class="failed-tid-stat-item">
+                    <span class="failed-tid-stat-number stat-success" id="success-count">-</span>
+                    <span class="failed-tid-stat-label">已成功</span>
+                </div>
+                <div class="failed-tid-stat-item">
+                    <span class="failed-tid-stat-number stat-abandoned" id="abandoned-count">-</span>
+                    <span class="failed-tid-stat-label">已放弃</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理操作 -->
+        <div class="failed-tid-actions-section">
+
+            <!-- 重试模式选择器 -->
+            <div class="retry-config-card">
+                <div class="retry-config-container">
+                    <div class="retry-config-header">
+                        <i class="fas fa-cog"></i>
+                        <h4>重试模式配置</h4>
+                    </div>
+
+                    <!-- 模式选择 -->
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label class="retry-mode-label">选择模式</label>
+                        <div class="retry-mode-options">
+                            <label class="radio-card">
+                                <input type="radio" name="retryMode" value="single" checked
+                                    onchange="toggleRetryModeOptions()">
+                                <div class="radio-card-content">
+                                    <div class="radio-card-title">单轮模式</div>
+                                    <div class="radio-card-desc">仅处理一批</div>
+                                </div>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="retryMode" value="continuous"
+                                    onchange="toggleRetryModeOptions()">
+                                <div class="radio-card-content">
+                                    <div class="radio-card-title">循环模式</div>
+                                    <div class="radio-card-desc">分批处理全部</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 参数设置 -->
+                    <div class="retry-params-grid">
+                        <div class="retry-param-field">
+                            <label>每轮处理数量</label>
+                            <div class="retry-param-input-wrap">
+                                <input type="number" id="retryLimit" value="50" min="10" max="500" step="10"
+                                    oninput="toggleRetryModeOptions()" class="form-control">
+                                <span class="retry-param-unit">个 TID</span>
+                            </div>
+                        </div>
+
+                        <div id="maxRoundsContainer" class="retry-param-field" style="display: none;">
+                            <label>最多轮数</label>
+                            <div class="retry-param-input-wrap">
+                                <input type="number" id="maxRounds" value="20" min="1" max="100" step="1"
+                                    oninput="toggleRetryModeOptions()" class="form-control">
+                                <span class="retry-param-unit">轮</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 模式说明 -->
+                    <div id="modeTip" class="mode-tip-box">
+                        <span class="mode-tip-emoji">💡</span>
+                        <div class="mode-tip-text">
+                            单轮模式：处理 <strong>50</strong> 个TID后停止
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="failed-tid-actions">
+                <button onclick="loadFailedTidsStats()" class="btn btn-primary">刷新统计</button>
+                <button onclick="retryFailedTids()" class="btn btn-success">批量重试</button>
+                <button onclick="showFailedTidsList('pending')" class="btn btn-pink">查看待重试</button>
+                <button onclick="showFailedTidsList('abandoned')" class="btn btn-pink">查看已放弃</button>
+                <button onclick="cleanupFailedTids()" class="btn btn-destructive">清理记录</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 失败TID列表 - 加入动画容器 -->
+    <div id="failed-tids-list-wrapper" class="collapsible-wrapper">
+        <div class="collapsible-inner">
+            <div id="failed-tids-list" class="failed-tid-list-container">
+                <div class="failed-tid-list-header">
+                    <h4 class="failed-tid-list-title">失败TID列表</h4>
+                </div>
+                <div id="failed-tids-content" class="failed-tid-list-content">
+                    <div style="padding: 2rem; text-align: center; color: var(--muted-foreground);">
+                        正在加载...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    // 爬虫控制架构 v2.0.2 - 2026-01-16 (修复JavaScript语法错误)
+    // 爬虫页面特定的JavaScript
+    let selectedForums = [];
+    let isCrawling = false; // 【新增】全局爬取状态跟踪
+    let statusCheckInterval = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // 初始化按钮状态管理器
+        ButtonStateManager.init();
+
+        // 优先从服务器加载配置，失败则使用本地存储
+        Promise.all([
+            loadCrawlConfigFromServer().catch(() => false),
+            loadSelectedForumsFromServer().catch(() => false)
+        ]).then(([configLoaded, forumsLoaded]) => {
+            // 如果服务器加载失败，使用本地存储作为降级方案
+            if (!configLoaded) {
+                loadCrawlConfigFromStorage();
+            }
+            if (!forumsLoaded) {
+                loadSelectedForumsFromStorage();
+            }
+        });
+
+        // 页面加载时自动加载论坛列表（从缓存）
+        loadCrawlConfig();
+        checkCrawlStatus();
+
+        // 延迟加载论坛缓存，确保DOM完全加载
+        setTimeout(() => {
+            console.log('开始自动加载论坛缓存...');
+            loadForumCache().catch(error => {
+                console.error('自动加载论坛缓存失败:', error);
+                // 如果自动加载失败，显示提示信息
+                const forumListEl = document.getElementById('forum-list');
+                if (forumListEl) {
+                    forumListEl.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                        自动加载失败: ${error.message}<br>
+                        <small>请点击"读取缓存"或"同步论坛"按钮手动加载</small>
+                    </div>
+                `;
+                }
+            });
+        }, 1000); // 进一步增加延迟时间
+
+        // 自动加载失败TID统计
+        loadFailedTidsStats();
+
+        // 加载最近的爬取结果
+        loadRecentCrawlResults();
+
+        // 定期检查爬虫状态
+        setInterval(checkCrawlStatus, 5000);
+
+        // 添加配置变化监听器
+        addConfigChangeListeners();
+    });
+
+    // 监听页面可见性变化，实现跨浏览器/标签页配置同步
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            console.log('页面重新可见，重新加载配置和板块选择');
+            // 重新加载配置和板块选择
+            loadCrawlConfig();
+            loadForumCache().catch(e => console.error('重新加载论坛缓存失败:', e));
+        }
+    });
+
+    // 读取论坛缓存
+    async function loadForumCache() {
+        const loadBtn = document.querySelector('button[onclick="loadForumCache()"]');
+        let originalText = '读取缓存';
+
+        if (loadBtn) {
+            originalText = loadBtn.innerHTML;
+            loadBtn.innerHTML = '读取中...';
+            loadBtn.disabled = true;
+        }
+
+        try {
+            console.log('开始读取论坛缓存...');
+
+            // 并发获取论坛信息和最新统计数据
+            const [forumResponse, statsResponse] = await Promise.all([
+                fetch('/api/forum/info/batch?fast=false&force=false'), // 读取缓存
+                fetch('/api/stats/categories') // 使用缓存的统计数据
+            ]);
+
+            console.log('API响应状态:', {
+                forum: forumResponse.status,
+                stats: statsResponse.status
+            });
+
+            if (!forumResponse.ok) {
+                throw new Error(`论坛API请求失败: ${forumResponse.status} ${forumResponse.statusText}`);
+            }
+
+            if (!statsResponse.ok) {
+                throw new Error(`统计API请求失败: ${statsResponse.status} ${statsResponse.statusText}`);
+            }
+
+            const forumData = await forumResponse.json();
+            const statsData = await statsResponse.json();
+
+            console.log('论坛数据:', forumData);
+            console.log('统计数据:', statsData);
+
+            // 处理统计数据的响应格式（可能包装在 data 字段中）
+            const processedStatsData = statsData.data !== undefined ? statsData.data : statsData;
+            console.log('处理后的统计数据:', processedStatsData);
+
+            if (forumData.status === 'success' && forumData.data) {
+                updateForumList(forumData.data, statsData);
+                showToast('论坛缓存读取成功，本地主题数已更新', 'success');
+
+                // 显示缓存信息
+                if (forumData.cached) {
+                    const forumCount = Object.keys(forumData.data).length;
+                    console.log(`从缓存读取 ${forumCount} 个板块信息`);
+                    if (forumCount > 0) {
+                        showToast(`已从缓存读取 ${forumCount} 个板块信息`, 'info');
+                    } else {
+                        showToast('缓存为空，请点击"同步论坛"获取最新数据', 'warning');
+                    }
+                }
+            } else {
+                const errorMsg = forumData.message || '未知错误';
+                console.error('论坛数据获取失败:', errorMsg);
+                showToast('读取论坛缓存失败: ' + errorMsg, 'error');
+
+                // 显示错误提示
+                const forumListEl = document.getElementById('forum-list');
+                if (forumListEl) {
+                    forumListEl.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                        读取失败: ${errorMsg}<br>
+                        <small>请点击"读取缓存"重试或"同步论坛"获取最新数据</small>
+                    </div>
+                `;
+                }
+            }
+        } catch (error) {
+            console.error('读取论坛缓存失败:', error);
+            showToast('读取论坛缓存失败: ' + error.message, 'error');
+
+            // 错误时显示提示信息
+            const forumListEl = document.getElementById('forum-list');
+            if (forumListEl) {
+                forumListEl.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                    网络错误: ${error.message}<br>
+                    <small>请检查网络连接后重试</small>
+                </div>
+            `;
+            }
+        } finally {
+            if (loadBtn) {
+                loadBtn.innerHTML = originalText;
+                loadBtn.disabled = false;
+            }
+        }
+    }
+
+    // 加载论坛列表（强制同步）
+    async function loadForumList() {
+        console.log('='.repeat(60));
+        console.log('🔄 [loadForumList] 开始执行同步操作');
+        console.log('='.repeat(60));
+
+        const loadBtn = document.querySelector('button[onclick="loadForumList()"]');
+        const originalText = loadBtn.innerHTML;
+
+        try {
+            console.log('🔘 [loadForumList] 按钮状态设置为"同步中..."');
+            loadBtn.innerHTML = '同步中...';
+            loadBtn.disabled = true;
+
+            console.log('🌐 [loadForumList] 发送API请求...');
+            console.log('   - URL1: /api/forum/info/batch?fast=false&force=true');
+            console.log('   - URL2: /api/stats/categories');
+
+            const [forumResponse, statsResponse] = await Promise.all([
+                fetch('/api/forum/info/batch?fast=false&force=true'), // 强制刷新
+                fetch('/api/stats/categories')
+            ]);
+
+            console.log('✅ [loadForumList] 收到响应:', {
+                forumStatus: forumResponse.status,
+                statsStatus: statsResponse.status
+            });
+
+            const forumResult = await forumResponse.json();
+            const statsResult = await statsResponse.json();
+
+            if (forumResult.status === 'success' && forumResult.data) {
+                updateForumList(forumResult.data, statsResult);
+                showToast('板块信息同步成功（缓存已更新，72小时内有效）', 'success');
+            } else {
+                showToast('同步失败: ' + forumResult.message, 'error');
+                // 显示警告标识
+                showSyncWarning(forumResult.message);
+            }
+        } catch (error) {
+            console.error('同步板块信息失败:', error);
+            showToast('同步失败: ' + error.message, 'error');
+            showSyncWarning('网络连接失败或服务器错误');
+        } finally {
+            loadBtn.innerHTML = originalText;
+            loadBtn.disabled = false;
+        }
+    }
+
+    // 更新论坛列表显示
+    function updateForumList(forums, statsResult = []) {
+        console.log('updateForumList 被调用:', { forums, statsResult });
+
+        const forumListEl = document.getElementById('forum-list');
+        if (!forumListEl) {
+            console.error('找不到 forum-list 元素');
+            return;
+        }
+
+        const categoryStats = {};
+
+        // 检查forums参数是否有效
+        if (!forums || typeof forums !== 'object') {
+            console.warn('论坛数据无效:', forums);
+            forumListEl.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                论坛数据无效，请点击"读取缓存"或"同步论坛"按钮获取数据
+            </div>
+        `;
+            return;
+        }
+
+        const forumKeys = Object.keys(forums);
+        if (forumKeys.length === 0) {
+            console.warn('论坛数据为空');
+            forumListEl.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--muted-foreground);">
+                暂无板块数据，请点击"读取缓存"或"同步论坛"按钮获取数据
+            </div>
+        `;
+            return;
+        }
+
+        console.log(`准备显示 ${forumKeys.length} 个板块`);
+
+        // 加载保存的选中状态
+        loadSelectedForumsFromStorage();
+
+        // 处理统计数据，将板块名称映射到数量
+        const statsPayload = Array.isArray(statsResult)
+            ? statsResult
+            : (statsResult && Array.isArray(statsResult.data) ? statsResult.data : []);
+
+        if (Array.isArray(statsPayload)) {
+            statsPayload.forEach(stat => {
+                const sectionName = stat.section || stat.name;
+                if (sectionName && sectionName !== '未知') {
+                    const countValue = stat.count !== undefined
+                        ? stat.count
+                        : (stat.resource_count !== undefined ? stat.resource_count : 0);
+                    categoryStats[sectionName] = countValue;
+                }
+            });
+            console.log('本地统计数据:', categoryStats);
+            console.log('统计数据详情:', statsPayload);
+        } else {
+            console.warn('统计数据格式异常:', statsResult);
+        }
+
+        forumListEl.innerHTML = '';
+
+        let renderedCount = 0;
+        Object.entries(forums).forEach(([fid, info]) => {
+            const forumCard = document.createElement('div');
+            forumCard.className = 'forum-card';
+            forumCard.dataset.fid = fid;
+
+            // 应用保存的选中状态
+            if (selectedForums.includes(fid)) {
+                forumCard.classList.add('selected');
+            }
+
+            // 获取本地已爬取的主题数
+            const localCount = categoryStats[info.name] || 0;
+            console.log(`板块 "${info.name}" 本地主题数: ${localCount}`, {
+                categoryStats,
+                infoName: info.name,
+                hasMatch: info.name in categoryStats
+            });
+
+            // 修复字段名称：使用total_topics和total_pages而不是topics和pages
+            // 注意：null、undefined 不转换为 0，保持原值用于判断
+            const remoteTopics = info.total_topics !== undefined && info.total_topics !== null ? info.total_topics : (info.topics !== undefined && info.topics !== null ? info.topics : null);
+            const remotePages = info.total_pages !== undefined && info.total_pages !== null ? info.total_pages : (info.pages !== undefined && info.pages !== null ? info.pages : null);
+
+            // 检查是否需要显示警告（主题数或页数为null）
+            const hasWarning = remoteTopics === null || remotePages === null;
+
+            forumCard.innerHTML = `
+            <div class="forum-card-header">
+                <div class="forum-name">
+                    ${info.name || `板块${fid}`}
+                    ${hasWarning ? '<span style="color: #f59e0b; margin-left: 0.5rem;" title="同步数据不完整"></span>' : ''}
+                </div>
+                <div class="forum-fid">FID: ${fid}</div>
+            </div>
+            <div class="forum-stats">
+                <div>远程主题: ${remoteTopics !== null ? remoteTopics : '未知'}</div>
+                <div>远程页数: ${remotePages !== null ? remotePages : '未知'}</div>
+                <div>本地主题: <strong style="color: var(--emerald-500);">${localCount}</strong></div>
+            </div>
+        `;
+
+            forumCard.addEventListener('click', () => toggleForumSelection(fid, forumCard));
+            forumListEl.appendChild(forumCard);
+            renderedCount++;
+        });
+
+        console.log(`论坛列表更新完成: 渲染了 ${renderedCount} 个板块, 已选中: ${selectedForums.length} 个`);
+
+        // 【新增】检查是否有任何板块信息不完整，显示/隐藏警告徽章
+        checkAndUpdateSyncWarning(forums);
+    }
+
+    // 【新增】检查并更新同步警告徽章
+    function checkAndUpdateSyncWarning(forums) {
+        const warningBadge = document.getElementById('sync-warning');
+        if (!warningBadge) return;
+
+        // 检查是否有任何板块的主题数或页数为null
+        let hasIncompleteData = false;
+        if (forums && typeof forums === 'object') {
+            for (const [fid, info] of Object.entries(forums)) {
+                const remoteTopics = info.total_topics !== undefined && info.total_topics !== null ? info.total_topics : (info.topics !== undefined && info.topics !== null ? info.topics : null);
+                const remotePages = info.total_pages !== undefined && info.total_pages !== null ? info.total_pages : (info.pages !== undefined && info.pages !== null ? info.pages : null);
+
+                if (remoteTopics === null || remotePages === null) {
+                    hasIncompleteData = true;
+                    break;
+                }
+            }
+        }
+
+        // 显示或隐藏警告徽章
+        if (hasIncompleteData) {
+            warningBadge.style.display = 'inline-flex';
+        } else {
+            warningBadge.style.display = 'none';
+        }
+    }
+
+    // 显示同步警告
+    function showSyncWarning(message) {
+        const warningEl = document.createElement('div');
+        warningEl.className = 'alert alert-warning mt-4';
+        warningEl.innerHTML = `
+        <strong>同步警告:</strong> ${message}
+        <br><small>部分板块信息可能不完整，建议稍后重试或检查网络连接</small>
+    `;
+
+        // 插入到板块选择区域后面
+        const forumSection = document.querySelector('.forum-selection');
+        forumSection.appendChild(warningEl);
+
+        // 5秒后自动移除警告
+        setTimeout(() => {
+            if (warningEl.parentNode) {
+                warningEl.parentNode.removeChild(warningEl);
+            }
+        }, 5000);
+    }
+
+    // 保存选中状态到服务器
+    async function saveSelectedForums() {
+        try {
+            // 同时保存到localStorage（快速访问）和服务器（跨设备同步）
+            localStorage.setItem('selectedForums', JSON.stringify(selectedForums));
+
+            // 保存到服务器
+            const response = await fetch('/api/crawl/selected-forums', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    selected_forums: selectedForums
+                })
+            });
+
+            if (response.ok) {
+                console.log('选中论坛已保存到服务器');
+            } else {
+                console.warn('服务器论坛选择保存失败，仅保存到本地');
+            }
+        } catch (error) {
+            console.warn('无法保存选中状态:', error);
+        }
+    }
+
+    // 从服务器加载选中状态
+    async function loadSelectedForumsFromServer() {
+        try {
+            const response = await fetch('/api/crawl/selected-forums');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.status === 'success' && Array.isArray(data.selected_forums)) {
+                    selectedForums = data.selected_forums;
+                    updateForumSelection();
+                    console.log('已从服务器加载选中状态:', selectedForums);
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.warn('从服务器加载论坛选择失败:', error);
+        }
+        return false;
+    }
+
+    // 从localStorage加载选中状态（降级方案）
+    function loadSelectedForumsFromStorage() {
+        try {
+            const saved = localStorage.getItem('selectedForums');
+            if (saved) {
+                selectedForums = JSON.parse(saved);
+                updateForumSelection();
+                console.log('已从本地存储加载选中状态:', selectedForums);
+                return true;
+            }
+        } catch (error) {
+            console.warn('无法加载本地选中状态:', error);
+            selectedForums = [];
+        }
+        return false;
+    }
+
+    // 注意：saveCrawlConfig 函数的完整实现在下方（line 1238），这里不重复定义
+
+    // 从服务器加载爬取配置
+    async function loadCrawlConfigFromServer() {
+        try {
+            const response = await fetch('/api/crawl/config');
+            if (response.ok) {
+                const data = await response.json();
+                const config = data.config || {};
+
+                if (config.date_mode) {
+                    document.getElementById('dateMode').value = config.date_mode;
+                }
+                if (config.page_mode) {
+                    document.getElementById('pageMode').value = config.page_mode;
+                    togglePageConfig();
+                }
+                if (config.max_pages) {
+                    document.getElementById('maxPages').value = config.max_pages;
+                }
+                if (config.page_range && Array.isArray(config.page_range) && config.page_range.length === 2) {
+                    document.getElementById('startPage').value = config.page_range[0];
+                    document.getElementById('endPage').value = config.page_range[1];
+                }
+
+                console.log('已从服务器加载爬取配置:', config);
+                return true;
+            }
+        } catch (error) {
+            console.warn('从服务器加载配置失败:', error);
+        }
+        return false;
+    }
+
+    // 从localStorage加载爬取配置（降级方案）
+    function loadCrawlConfigFromStorage() {
+        try {
+            const saved = localStorage.getItem('crawlConfig');
+            if (saved) {
+                const config = JSON.parse(saved);
+
+                if (config.date_mode) {
+                    document.getElementById('dateMode').value = config.date_mode;
+                }
+                if (config.page_mode) {
+                    document.getElementById('pageMode').value = config.page_mode;
+                    togglePageConfig();
+                }
+                if (config.max_pages) {
+                    document.getElementById('maxPages').value = config.max_pages;
+                }
+                if (config.page_range && Array.isArray(config.page_range) && config.page_range.length === 2) {
+                    document.getElementById('startPage').value = config.page_range[0];
+                    document.getElementById('endPage').value = config.page_range[1];
+                }
+                console.log('已从本地存储加载爬取配置:', config);
+                return true;
+            }
+        } catch (error) {
+            console.warn('无法加载本地爬取配置:', error);
+        }
+        return false;
+    }
+
+    // 添加配置变化监听器
+    function addConfigChangeListeners() {
+        // 监听所有配置项的变化
+        const configElements = ['dateMode', 'pageMode', 'maxPages', 'startPage', 'endPage'];
+        configElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', saveCrawlConfig);
+            }
+        });
+    }
+
+    // 切换论坛选择
+    function toggleForumSelection(fid, cardElement) {
+        const index = selectedForums.indexOf(fid);
+
+        if (index > -1) {
+            selectedForums.splice(index, 1);
+            cardElement.classList.remove('selected');
+        } else {
+            selectedForums.push(fid);
+            cardElement.classList.add('selected');
+        }
+
+        // 保存选中状态
+        saveSelectedForums();
+    }
+
+    // 全选论坛
+    function selectAllForums() {
+        const forumCards = document.querySelectorAll('.forum-card');
+        selectedForums = [];
+
+        forumCards.forEach(card => {
+            const fid = card.dataset.fid;
+            if (fid) {
+                selectedForums.push(fid);
+                card.classList.add('selected');
+            }
+        });
+
+        // 保存选中状态
+        saveSelectedForums();
+    }
+
+    // 清空选择
+    function clearAllForums() {
+        selectedForums = [];
+        document.querySelectorAll('.forum-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // 保存选中状态
+        saveSelectedForums();
+    }
+
+    // 切换页数配置显示
+    function togglePageConfig() {
+        const pageMode = document.getElementById('pageMode').value;
+        const fixedField = document.getElementById('fixedPagesField');
+        const rangeField = document.getElementById('rangePagesField');
+
+        if (pageMode === 'fixed') {
+            fixedField.style.display = 'flex';
+            rangeField.style.display = 'none';
+        } else if (pageMode === 'range') {
+            fixedField.style.display = 'none';
+            rangeField.style.display = 'flex';
+        } else { // full
+            fixedField.style.display = 'none';
+            rangeField.style.display = 'none';
+        }
+
+        // 自动保存配置
+        saveCrawlConfig();
+    }
+
+    // 加载爬虫配置
+    let isLoadingConfig = false;
+    async function loadCrawlConfig() {
+        try {
+            isLoadingConfig = true; // 标记正在加载配置
+            const response = await fetch('/api/crawl/config');
+            const result = await response.json();
+
+            // API 返回格式为 { status: 'success', data: {...} }
+            const config = result.data || result;
+
+            if (config.date_mode) {
+                document.getElementById('dateMode').value = config.date_mode;
+            }
+            if (config.page_mode) {
+                document.getElementById('pageMode').value = config.page_mode;
+                togglePageConfig();
+            }
+            if (config.max_pages) {
+                document.getElementById('maxPages').value = config.max_pages;
+            }
+            if (config.page_range && Array.isArray(config.page_range) && config.page_range.length === 2) {
+                document.getElementById('startPage').value = config.page_range[0];
+                document.getElementById('endPage').value = config.page_range[1];
+            }
+            if (config.selected_forums) {
+                selectedForums = config.selected_forums;
+                // 更新UI选择状态
+                updateForumSelection();
+            }
+
+            console.log('✓ 爬虫配置已加载（来自服务器）');
+        } catch (error) {
+            console.error('加载爬虫配置失败:', error);
+        } finally {
+            isLoadingConfig = false; // 加载完成
+        }
+    }
+
+    // 更新论坛选择UI
+    function updateForumSelection() {
+        document.querySelectorAll('.forum-card').forEach(card => {
+            const fid = card.dataset.fid;
+            if (selectedForums.includes(fid)) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+    }
+
+    // 保存爬虫配置
+    let saveConfigTimeout = null;
+    async function saveCrawlConfig(showNotification = false) {
+        // 如果正在加载配置，跳过保存
+        if (isLoadingConfig) {
+            return;
+        }
+
+        // 防抖：清除之前的定时器
+        if (saveConfigTimeout) {
+            clearTimeout(saveConfigTimeout);
+        }
+
+        // 延迟保存（避免频繁请求）
+        saveConfigTimeout = setTimeout(async () => {
+            try {
+                const statusEl = document.getElementById('config-save-status');
+                if (statusEl) {
+                    statusEl.textContent = '保存中...';
+                    statusEl.style.color = 'var(--muted-foreground)';
+                }
+
+                const config = {
+                    selected_forums: selectedForums,
+                    date_mode: document.getElementById('dateMode').value,
+                    page_mode: document.getElementById('pageMode').value,
+                    max_pages: parseInt(document.getElementById('maxPages').value)
+                };
+
+                // 如果是范围模式，添加 page_range参数
+                if (config.page_mode === 'range') {
+                    const startPage = document.getElementById('startPage').value;
+                    const endPage = document.getElementById('endPage').value;
+                    if (startPage && endPage) {
+                        config.page_range = [parseInt(startPage), parseInt(endPage)];
+                    }
+                }
+
+                const response = await fetch('/api/crawl/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    if (statusEl) {
+                        statusEl.textContent = '✓ 已保存';
+                        statusEl.style.color = 'var(--emerald-500)';
+                        // 3秒后清除状态
+                        setTimeout(() => {
+                            statusEl.textContent = '';
+                        }, 3000);
+                    }
+                    // 只有手动点击保存按钮时才显示 toast
+                    if (showNotification) {
+                        showToast('爬虫配置保存成功', 'success');
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.textContent = '✗ 保存失败';
+                        statusEl.style.color = 'var(--rose-500)';
+                    }
+                    if (showNotification) {
+                        showToast('保存配置失败', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('保存爬虫配置失败:', error);
+                const statusEl = document.getElementById('config-save-status');
+                if (statusEl) {
+                    statusEl.textContent = '✗ 保存失败';
+                    statusEl.style.color = 'var(--rose-500)';
+                }
+                if (showNotification) {
+                    showToast('保存配置失败: ' + error.message, 'error');
+                }
+            }
+        }, 500); // 500ms 防抖
+    }
+
+    // 【新增】实时同步爬虫UI状态（由 base.html 定期调用）
+    window.syncCrawlerUI = function (config) {
+        if (isLoadingConfig || (typeof isCrawling !== 'undefined' && isCrawling)) {
+            return; // 如果正在加载或正在爬取，不自动同步配置，避免冲突
+        }
+
+        let changed = false;
+
+        // 1. 同步板块选择
+        if (config.CRAWL_FORUMS && Array.isArray(config.CRAWL_FORUMS)) {
+            const newForums = config.CRAWL_FORUMS;
+            // 比较是否有变化
+            if (JSON.stringify(newForums.sort()) !== JSON.stringify(selectedForums.sort())) {
+                console.log('🔄 检测到板块选择变化，从服务器同步');
+                selectedForums = newForums;
+                updateForumSelection();
+                changed = true;
+            }
+        }
+
+        // 2. 同步爬虫参数
+        const params = [
+            { id: 'dateMode', key: 'CRAWL_DATE_MODE' },
+            { id: 'pageMode', key: 'CRAWL_PAGE_MODE' },
+            { id: 'maxPages', key: 'CRAWL_MAX_PAGES' }
+        ];
+
+        params.forEach(p => {
+            const el = document.getElementById(p.id);
+            if (el && config[p.key] !== undefined) {
+                const newValue = String(config[p.key]);
+                if (el.value !== newValue && document.activeElement !== el) {
+                    console.log(`🔄 同步配置 ${p.id}: ${el.value} -> ${newValue}`);
+                    el.value = newValue;
+                    if (p.id === 'pageMode') togglePageConfig();
+                    changed = true;
+                }
+            }
+        });
+
+        // 同步 page_range
+        if (config.CRAWL_PAGE_MODE === 'range' && config.CRAWL_PAGE_RANGE && Array.isArray(config.CRAWL_PAGE_RANGE) && config.CRAWL_PAGE_RANGE.length === 2) {
+            const startPageEl = document.getElementById('startPage');
+            const endPageEl = document.getElementById('endPage');
+            const newStart = String(config.CRAWL_PAGE_RANGE[0]);
+            const newEnd = String(config.CRAWL_PAGE_RANGE[1]);
+
+            if (startPageEl && endPageEl) {
+                if (startPageEl.value !== newStart && document.activeElement !== startPageEl) {
+                    startPageEl.value = newStart;
+                    changed = true;
+                }
+                if (endPageEl.value !== newEnd && document.activeElement !== endPageEl) {
+                    endPageEl.value = newEnd;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            // console.log('✓ 爬虫配置同步完成');
+        }
+    };
+
+    // 检查爬虫状态
+    async function checkCrawlStatus() {
+        try {
+            const response = await fetch('/api/crawl/status');
+            const status = await response.json();
+
+            // 【调试】输出完整的状态信息
+            console.log('🔍 [checkCrawlStatus] 收到状态:', {
+                is_crawling: status.is_crawling,
+                is_paused: status.is_paused,
+                message: status.message,
+                timestamp: new Date().toLocaleTimeString()
+            });
+
+            const statusEl = document.getElementById('crawl-status');
+            const lastTimeEl = document.getElementById('last-crawl-time');
+            const progressEl = document.getElementById('crawl-progress');
+            const crawlBtn = document.getElementById('crawlBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const forceClearBtn = document.getElementById('forceClearBtn');
+            const progressContainer = document.getElementById('progress-container');
+            const detailedProgress = document.getElementById('detailed-progress');
+
+            // 更新状态
+            statusEl.textContent = status.message || '空闲';
+            statusEl.className = `status-badge ${status.is_crawling ? 'status-running' : (status.is_paused ? 'status-paused' : 'status-idle')}`;
+
+            if (status.last_crawl_time) {
+                lastTimeEl.textContent = new Date(status.last_crawl_time).toLocaleString();
+            }
+
+            // 【修复】防止按钮状态抖动 - 使用状态锁定机制
+            // 如果按钮正在执行操作（显示"正在暂停..."等），不更新按钮状态
+            // pauseBtn 和 resumeBtn 已在上方声明，这里直接使用
+            const isPauseInProgress = pauseBtn.textContent.includes('正在');
+            const isResumeInProgress = resumeBtn.textContent.includes('正在');
+
+            // 更新按钮状态 - 【修复】优先检查is_paused状态，并防止抖动
+            if (status.is_paused) {
+                console.log('⏸️ [checkCrawlStatus] 检测到暂停状态，更新按钮...');
+                // 暂停状态：显示"继续"和"停止"按钮
+                isCrawling = false; // 暂停状态不认为是"正在爬取"
+                crawlBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-flex';
+                pauseBtn.style.display = 'none'; // 暂停时不显示暂停按钮
+                resumeBtn.style.display = 'inline-flex';
+
+                // 只有在不是"正在恢复"状态时才更新按钮
+                if (!isResumeInProgress) {
+                    resumeBtn.disabled = false;
+                    resumeBtn.textContent = '继续';
+                }
+                stopBtn.disabled = false;
+                stopBtn.textContent = '停止';
+
+                // 重置暂停按钮文本
+                pauseBtn.textContent = '暂停';
+                progressContainer.style.display = 'block';
+                detailedProgress.style.display = 'block';
+                forceClearBtn.style.display = 'inline-flex';
+
+                // 暂停状态下也保持较高频率刷新，以便用户看到状态变化
+                if (!statusCheckInterval || statusCheckInterval._delay > 2000) {
+                    if (statusCheckInterval) clearInterval(statusCheckInterval);
+                    const itv = setInterval(checkCrawlStatus, 1000); // 秒级刷新
+                    itv._delay = 1000;
+                    statusCheckInterval = itv;
+                    console.log('⏸️ 侦测到爬取任务暂停，已提升状态刷新频率到 1s');
+                }
+
+                // 更新进度显示为暂停状态
+                document.getElementById('current-section').textContent = '爬虫已暂停';
+                // 其他进度信息保持不变，或者显示上次更新的值
+            } else if (status.is_crawling) {
+                // 运行状态：显示"暂停"和"停止"按钮
+                isCrawling = true; // 更新全局状态
+                crawlBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-flex';
+                pauseBtn.style.display = 'inline-flex';
+                resumeBtn.style.display = 'none'; // 爬取中不显示恢复按钮
+
+                // 只有在不是"正在暂停"状态时才更新按钮
+                if (!isPauseInProgress) {
+                    pauseBtn.disabled = false;
+                    pauseBtn.textContent = '暂停';
+                }
+                stopBtn.disabled = false;
+                stopBtn.textContent = '停止';
+
+                // 重置恢复按钮文本
+                resumeBtn.textContent = '继续';
+                progressContainer.style.display = 'block';
+                detailedProgress.style.display = 'block';
+                forceClearBtn.style.display = 'inline-flex';
+
+                // 🚀 核心优化：如果在爬取中但轮询频率较低，立即提升频率
+                if (!statusCheckInterval || statusCheckInterval._delay > 2000) {
+                    if (statusCheckInterval) clearInterval(statusCheckInterval);
+                    const itv = setInterval(checkCrawlStatus, 1000); // 秒级刷新
+                    itv._delay = 1000;
+                    statusCheckInterval = itv;
+                    console.log('⚡ 侦测到爬取任务，已提升状态刷新频率到 1s');
+                }
+
+                // 更新进度
+                if (status.progress) {
+                    const progress = status.progress;
+
+                    // 优先使用页面级别的进度百分比
+                    let percentage = 0;
+                    if (progress.progress_percent !== undefined) {
+                        percentage = progress.progress_percent;
+                    } else if (progress.sections_total > 0) {
+                        percentage = (progress.sections_done / progress.sections_total) * 100;
+                    }
+
+                    document.getElementById('progress-fill').style.width = percentage + '%';
+
+                    // 显示页面级别的进度
+                    if (progress.processed_pages !== undefined && progress.estimated_total_pages) {
+                        document.getElementById('progress-text').textContent =
+                            `已爬取 ${progress.processed_pages}/${progress.estimated_total_pages} 页`;
+                    } else {
+                        document.getElementById('progress-text').textContent =
+                            `${progress.sections_done || 0}/${progress.sections_total || 0} 个板块`;
+                    }
+
+                    progressEl.textContent = `${Math.round(percentage)}%`;
+
+                    // 更新详细进度
+                    document.getElementById('current-section').textContent =
+                        progress.current_section ? `正在爬取: ${progress.current_section}` : '准备中...';
+
+                    // 【优化】页码显示 - 区分实际页码和任务进度
+                    let pageProgressText = '';
+                    if (progress.current_page_actual && progress.max_pages_actual) {
+                        // 使用新的页码概念字段（范围爬取模式）
+                        const actualPageDisplay = `当前爬取的是：第 ${progress.current_page_actual} / ${progress.max_pages_actual} 页`;
+                        const taskProgressDisplay = `(板块任务进度: 第 ${progress.current_page_task} / ${progress.max_pages_task} 页)`;
+                        pageProgressText = `${actualPageDisplay} ${taskProgressDisplay}`;
+                    } else if (progress.current_page && progress.max_pages) {
+                        // 回退到旧的字段（普通模式）
+                        pageProgressText = `第 ${progress.current_page} / ${progress.max_pages} 页`;
+                    }
+
+                    document.getElementById('page-progress').textContent = pageProgressText;
+
+                    document.getElementById('save-progress').textContent =
+                        `已保存: ${progress.total_saved || 0} 条，重复且跳过: ${progress.total_skipped || 0} 条`;
+                }
+            }
+            else {
+                isCrawling = false; // 更新全局状态
+                crawlBtn.style.display = 'inline-flex';
+                stopBtn.style.display = 'none';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                forceClearBtn.style.display = 'none';
+                progressContainer.style.display = 'none';
+                detailedProgress.style.display = 'none';
+                progressEl.textContent = '-';
+
+                // 重置所有按钮文本，确保下次使用时状态正确
+                crawlBtn.textContent = '开始爬取';
+                crawlBtn.disabled = false;
+                stopBtn.textContent = '停止';
+                stopBtn.disabled = false;
+                pauseBtn.textContent = '暂停';
+                pauseBtn.disabled = false;
+                resumeBtn.textContent = '继续';
+                resumeBtn.disabled = false;
+
+                // 爬虫完成后，恢复正常检查频率
+                if (statusCheckInterval && statusCheckInterval._delay < 10000) {
+                    clearInterval(statusCheckInterval);
+                    const itv = setInterval(checkCrawlStatus, 10000); // 10秒一次
+                    itv._delay = 10000;
+                    statusCheckInterval = itv;
+                    console.log('💤 爬取任务结束，已降低状态刷新频率');
+                }
+
+                // 如果刚完成爬取，显示结果
+                if (status.last_result) {
+                    showCrawlResults(status.last_result);
+                }
+            }
+        } catch (error) {
+            console.error('检查爬虫状态失败', error);
+        }
+    }
+
+    // 显示爬取结果
+    function toggleCrawlDetails() {
+        const drawer = document.getElementById('crawl-details-drawer');
+        const icon = document.querySelector('.details-toggle-icon');
+        if (drawer) {
+            drawer.classList.toggle('open');
+            if (icon) {
+                icon.classList.toggle('rotate');
+            }
+        }
+    }
+
+    // 显示爬取结果
+    function showCrawlResults(result) {
+        const resultsCard = document.getElementById('crawl-results-card');
+        const resultsContent = document.getElementById('crawl-results-content');
+        const resultsTitle = document.getElementById('crawl-results-title');
+
+        if (!result || !resultsCard || !resultsContent) return;
+
+        const totalNew = result.total_saved || 0;
+        const totalSkipped = result.total_skipped || 0;
+        const totalTime = result.total_time || '0秒';
+        const durationSeconds = result.duration_seconds || 0;
+        const timestamp = result.timestamp || new Date().toISOString();
+
+        // 元数据和高级统计
+        const metadata = result.metadata || {};
+        const mode = metadata.mode || 'unknown';
+        const concurrency = metadata.concurrency || 1;
+
+        // 计算效率指标
+        const totalItems = totalNew + totalSkipped;
+        const itemsPerMinute = durationSeconds > 0 ? ((totalItems / durationSeconds) * 60).toFixed(1) : 0;
+        const secondsPerItem = totalItems > 0 ? (durationSeconds / totalItems).toFixed(2) : 0;
+
+        // 生成元数据标签
+        let metaBadges = '';
+        if (mode === 'async') {
+            metaBadges += `<span class="badge badge-purple" title="并发数: ${concurrency}">⚡ 异步模式 (并发 ${concurrency})</span>`;
+        } else if (mode === 'thread') {
+            metaBadges += `<span class="badge badge-blue">🧵 多线程模式</span>`;
+        } else {
+            metaBadges += `<span class="badge badge-gray">🔄 同步模式</span>`;
+        }
+
+        // 代理状态
+        if (metadata.proxy_enabled) {
+            metaBadges += `<span class="badge badge-yellow">🛡️ 代理开启</span>`;
+        }
+
+        if (resultsTitle) {
+            resultsTitle.innerHTML = `爬取任务完成 ${metaBadges}`;
+        }
+
+        const sections = result.sections || {};
+        // 页面级别统计
+        const pageStats = result.page_statistics || {};
+        const sectionPageBreakdown = result.section_page_breakdown || {};
+
+        let sectionsHtml = '';
+        // sections 是对象，需要遍历键值对
+        Object.entries(sections).forEach(([sectionName, sectionData]) => {
+            const saved = sectionData.saved || 0;
+            const skipped = sectionData.skipped || 0;
+
+            // 只显示有数据的板块
+            if (saved > 0 || skipped > 0) {
+                // 获取该板块的页面统计
+                const sectionPages = sectionPageBreakdown[sectionName] || {};
+                const successfulPages = sectionPages.successful_pages || [];
+                const failedPages = sectionPages.failed_pages || [];
+                const totalPages = sectionPages.total_pages || 0;
+
+                let pageInfo = '';
+                if (totalPages > 0) {
+                    const successCount = successfulPages.length;
+                    const failedCount = failedPages.length;
+
+                    if (failedCount > 0) {
+                        pageInfo = `<br><small style="color: var(--muted-foreground);">
+                        页面: ${successCount}成功/${totalPages}总计 
+                        ${failedCount > 0 ? `(失败: ${failedPages.join(', ')})` : ''}
+                    </small>`;
+                    } else {
+                        pageInfo = `<br><small style="color: var(--muted-foreground);">
+                        页面: ${successCount}/${totalPages}
+                    </small>`;
+                    }
+                }
+
+                sectionsHtml += `
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                    <span>${sectionName}${pageInfo}</span>
+                    <span style="color: var(--muted-foreground);">
+                        新增: <strong style="color: var(--emerald-500);">${saved}</strong>, 
+                        跳过: ${skipped}
+                    </span>
+                </div>
+            `;
+            }
+        });
+
+        // 页面级别摘要
+        let pageStatsHtml = '';
+        if (pageStats.total_attempted > 0) {
+            const successRate = pageStats.success_rate || 0;
+            const totalAttempted = pageStats.total_attempted || 0;
+            const totalSuccessful = pageStats.total_successful || 0;
+            const totalFailed = pageStats.total_failed || 0;
+
+            let failedPagesDetail = '';
+            if (totalFailed > 0 && pageStats.failed_pages_detail) {
+                const failedPages = pageStats.failed_pages_detail;
+                const failedBySection = {};
+
+                failedPages.forEach(page => {
+                    if (!failedBySection[page.section]) {
+                        failedBySection[page.section] = [];
+                    }
+                    failedBySection[page.section].push(page.page);
+                });
+
+                const failedSummary = Object.entries(failedBySection)
+                    .map(([section, pages]) => `${section}: 第${pages.join(', ')}页`)
+                    .join('; ');
+
+                failedPagesDetail = `<br><small style="color: var(--red-500);">失败页面: ${failedSummary}</small>`;
+            }
+
+            pageStatsHtml = `
+            <div style="margin: 1rem 0; padding: 1rem; background: var(--muted); border-radius: var(--border-radius);">
+                <div style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">页面统计</div>
+                <div style="font-size: 0.75rem; color: var(--muted-foreground);">
+                    总计: ${totalAttempted}页 | 成功: ${totalSuccessful}页 | 失败: ${totalFailed}页 | 成功率: ${successRate}%
+                    ${failedPagesDetail}
+                </div>
+            </div>
+        `;
+        }
+
+        // 重试统计
+        let retryStatsHtml = '';
+        if (pageStats.retry_summary && pageStats.retry_summary.attempted > 0) {
+            const retry = pageStats.retry_summary;
+            retryStatsHtml = `
+            <div style="margin: 1rem 0; padding: 1rem; background: var(--muted); border-radius: var(--border-radius);">
+                <div style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">重试统计</div>
+                <div style="font-size: 0.75rem; color: var(--muted-foreground);">
+                    重试: ${retry.attempted}页 | 成功: ${retry.successful}页 | 失败: ${retry.failed}页
+                    ${retry.saved > 0 ? `| 新增: ${retry.saved}` : ''}${retry.skipped > 0 ? `| 跳过: ${retry.skipped}` : ''}
+                </div>
+            </div>
+        `;
+        }
+
+        resultsContent.innerHTML = `
+        <div class="crawl-results-stats">
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: var(--emerald-500);">${totalNew}</div>
+                <div style="font-size: 0.75rem; color: var(--muted-foreground);">新增资源</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: var(--muted-foreground);">${totalSkipped}</div>
+                <div style="font-size: 0.75rem; color: var(--muted-foreground);">跳过重复</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: var(--blue-500);">${totalTime}</div>
+                <div style="font-size: 0.75rem; color: var(--muted-foreground);">总耗时</div>
+            </div>
+        </div>
+        
+        <!-- 引擎元数据 & 效能统计 -->
+        <div style="margin: 1rem 0; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--border-radius); display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+                <div style="font-size: 0.75rem; color: var(--muted-foreground); margin-bottom: 0.25rem;">引擎配置</div>
+                <div style="font-size: 0.875rem; font-weight: 500;">
+                    ${metadata.mode === 'async' ? '⚡ 异步模式' : (metadata.mode === 'thread' ? '🔀 多线程' : '➡️ 串行')} 
+                    (${metadata.concurrency || '-'})
+                </div>
+                <div style="font-size: 0.7rem; color: var(--muted-foreground);">
+                    延迟: ${metadata.delay_min}-${metadata.delay_max}s 
+                    | 代理: ${metadata.proxy_active ? '启用' : '未用'}
+                </div>
+            </div>
+            <div style="text-align: right; border-left: 1px solid var(--border); padding-left: 1rem;">
+                <div style="font-size: 0.75rem; color: var(--muted-foreground); margin-bottom: 0.25rem;">爬取效能</div>
+                <div style="font-size: 0.875rem; font-weight: 500; color: var(--emerald-500);">
+                    ${itemsPerMinute} <small>项/分</small>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--muted-foreground);">
+                    平均每项: ${secondsPerItem}s
+                </div>
+            </div>
+        </div>
+
+        ${pageStatsHtml}
+        ${retryStatsHtml}
+        ${sectionsHtml ? `
+            <div style="margin-top: 1rem;">
+                <button onclick="toggleCrawlDetails()" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: space-between; display: flex; align-items: center;">
+                    <span>查看板块详情</span>
+                    <span class="details-toggle-icon">▼</span>
+                </button>
+                <div id="crawl-details-drawer" class="crawl-details-drawer">
+                    ${sectionsHtml}
+                </div>
+            </div>
+        ` : ''}
+        <div style="font-size: 0.75rem; color: var(--muted-foreground); margin-top: 1rem;">
+            完成时间: ${new Date(timestamp).toLocaleString()}
+        </div>
+    `;
+
+        resultsCard.style.display = 'block';
+    }
+
+    // 加载最近的爬取结果
+    async function loadRecentCrawlResults() {
+        try {
+            const response = await fetch('/api/crawl/status');
+            const status = await response.json();
+
+            if (status.last_result) {
+                showCrawlResults(status.last_result);
+            }
+        } catch (error) {
+            console.warn('加载最近爬取结果失败:', error);
+        }
+    }
+
+    // 刷新爬取结果
+    async function refreshCrawlResults() {
+        try {
+            const response = await fetch('/api/crawl/status');
+            const status = await response.json();
+
+            if (status.last_result) {
+                showCrawlResults(status.last_result);
+                showToast('结果已刷新', 'success');
+            } else {
+                showToast('暂无爬取结果', 'info');
+            }
+        } catch (error) {
+            console.error('刷新爬取结果失败:', error);
+            showToast('刷新失败: ' + error.message, 'error');
+        }
+    }
+
+    // 清除爬取结果
+    function clearCrawlResults() {
+        const resultsContent = document.getElementById('crawl-results-content');
+        if (resultsContent) {
+            resultsContent.innerHTML = `
+            <div style="text-align: center; color: var(--muted-foreground); padding: 2rem;">
+                暂无爬取记录
+            </div>
+        `;
+        }
+    }
+
+    // 开始爬取
+    async function startCrawl() {
+        if (selectedForums.length === 0) {
+            showToast('请至少选择一个论坛', 'warning');
+            return;
+        }
+
+        try {
+            const dateMode = document.getElementById('dateMode').value;
+            const pageMode = document.getElementById('pageMode').value;
+            const maxPages = parseInt(document.getElementById('maxPages').value);
+
+            const config = {
+                fids: selectedForums,
+                date_mode: dateMode,
+                max_pages: maxPages,
+                page_mode: pageMode
+            };
+
+            // 如果是范围模式，添加 page_range参数
+            if (pageMode === 'range') {
+                const startPage = document.getElementById('startPage').value;
+                const endPage = document.getElementById('endPage').value;
+                if (!startPage || !endPage) {
+                    showToast('请输入有效的起止页码', 'error');
+                    return;
+                }
+                config.page_range = [parseInt(startPage), parseInt(endPage)];
+                // 自动计算页数供参考
+                config.max_pages = parseInt(endPage) - parseInt(startPage) + 1;
+            }
+
+            // 立即显示爬虫状态UI
+            const crawlBtn = document.getElementById('crawlBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const progressContainer = document.getElementById('progress-container');
+            const detailedProgress = document.getElementById('detailed-progress');
+
+            crawlBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-flex';
+            pauseBtn.style.display = 'inline-flex';
+            resumeBtn.style.display = 'none';
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            progressContainer.style.display = 'block';
+            detailedProgress.style.display = 'block';
+
+            // 显示初始状态
+            document.getElementById('progress-fill').style.width = '0%';
+            document.getElementById('progress-text').textContent = '准备中...';
+            document.getElementById('current-section').textContent = '正在启动爬虫...';
+            document.getElementById('page-progress').textContent = '';
+            document.getElementById('save-progress').textContent = '已保存: 0 条，跳过: 0 条';
+
+            const response = await fetch('/api/crawl/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            if (response.ok) {
+                showToast('爬虫任务已启动', 'success');
+                // 立即开始状态检查，并增加检查频率
+                checkCrawlStatus();
+                // 启动秒级实时监控
+                if (statusCheckInterval) clearInterval(statusCheckInterval);
+                const itv = setInterval(checkCrawlStatus, 1000);
+                itv._delay = 1000;
+                statusCheckInterval = itv;
+            } else {
+                const errorData = await response.json();
+                showToast('启动爬虫失败: ' + (errorData.message || '未知错误'), 'error');
+                // 恢复按钮状态
+                crawlBtn.style.display = 'inline-flex';
+                stopBtn.style.display = 'none';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                progressContainer.style.display = 'none';
+                detailedProgress.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('启动爬虫失败', error);
+            showToast('启动爬虫失败: ' + error.message, 'error');
+            // 恢复按钮状态
+            const crawlBtn = document.getElementById('crawlBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resumeBtn = document.getElementById('resumeBtn');
+            const progressContainer = document.getElementById('progress-container');
+            const detailedProgress = document.getElementById('detailed-progress');
+
+            crawlBtn.style.display = 'inline-flex';
+            stopBtn.style.display = 'none';
+            pauseBtn.style.display = 'none';
+            resumeBtn.style.display = 'none';
+            progressContainer.style.display = 'none';
+            detailedProgress.style.display = 'none';
+        }
+    }
+
+    // 按钮状态管理器
+    const ButtonStateManager = {
+        buttons: {
+            crawl: null,
+            stop: null,
+            pause: null,
+            resume: null,
+            forceClear: null
+        },
+
+        init() {
+            this.buttons.crawl = document.getElementById('crawlBtn');
+            this.buttons.stop = document.getElementById('stopBtn');
+            this.buttons.pause = document.getElementById('pauseBtn');
+            this.buttons.resume = document.getElementById('resumeBtn');
+            this.buttons.forceClear = document.getElementById('forceClearBtn');
+        },
+
+        // 重置所有按钮到初始状态
+        resetToIdle() {
+            this.buttons.crawl.style.display = 'inline-flex';
+            this.buttons.crawl.disabled = false;
+            this.buttons.crawl.textContent = '开始爬取';
+
+            this.buttons.stop.style.display = 'none';
+            this.buttons.stop.disabled = false;
+            this.buttons.stop.textContent = '停止';
+
+            this.buttons.pause.style.display = 'none';
+            this.buttons.pause.disabled = false;
+            this.buttons.pause.textContent = '暂停';
+
+            this.buttons.resume.style.display = 'none';
+            this.buttons.resume.disabled = false;
+            this.buttons.resume.textContent = '继续';
+
+            this.buttons.forceClear.style.display = 'none';
+        },
+
+        // 设置为空闲状态（别名）
+        setIdle() {
+            this.resetToIdle();
+        },
+
+        // 设置为运行状态
+        setRunning() {
+            this.buttons.crawl.style.display = 'none';
+            this.buttons.stop.style.display = 'inline-flex';
+            this.buttons.stop.disabled = false;
+            this.buttons.pause.style.display = 'inline-flex';
+            this.buttons.pause.disabled = false;
+            this.buttons.resume.style.display = 'none';
+            this.buttons.forceClear.style.display = 'inline-flex';
+        },
+
+        // 设置为暂停状态
+        setPaused() {
+            this.buttons.crawl.style.display = 'none';
+            this.buttons.stop.style.display = 'inline-flex';
+            this.buttons.stop.disabled = false;
+            this.buttons.pause.style.display = 'none';
+            this.buttons.resume.style.display = 'inline-flex';
+            this.buttons.resume.disabled = false;
+            this.buttons.forceClear.style.display = 'inline-flex';
+        },
+
+        // 设置为停止中状态
+        setStopping() {
+            this.buttons.stop.textContent = '正在停止...';
+            this.buttons.stop.disabled = true;
+            this.buttons.pause.disabled = true;
+            this.buttons.resume.disabled = true;
+            this.buttons.forceClear.style.display = 'inline-flex';
+        },
+
+        // 设置为暂停中状态
+        setPausing() {
+            this.buttons.pause.textContent = '正在暂停...';
+            this.buttons.pause.disabled = true;
+            this.buttons.stop.disabled = false;
+            this.buttons.forceClear.style.display = 'inline-flex';
+        },
+
+        // 设置为恢复中状态
+        setResuming() {
+            this.buttons.resume.textContent = '正在恢复...';
+            this.buttons.resume.disabled = true;
+            this.buttons.stop.disabled = false;
+            this.buttons.forceClear.style.display = 'inline-flex';
+        },
+
+        // 显示错误状态
+        showError(buttonType, errorMessage) {
+            const btn = this.buttons[buttonType];
+            if (!btn) return;
+
+            const originalText = btn.textContent;
+            btn.textContent = '操作失败';
+            btn.classList.add('btn-destructive');
+
+            // 3秒后恢复
+            setTimeout(() => {
+                btn.classList.remove('btn-destructive');
+                this.resetButtonText(buttonType);
+            }, 3000);
+
+            showToast(errorMessage, 'error');
+        },
+
+        // 重置按钮文本
+        resetButtonText(buttonType) {
+            const defaults = {
+                crawl: '开始爬取',
+                stop: '停止',
+                pause: '暂停',
+                resume: '继续'
+            };
+
+            const btn = this.buttons[buttonType];
+            if (btn && defaults[buttonType]) {
+                btn.textContent = defaults[buttonType];
+                btn.disabled = false;
+            }
+        }
+    };
+
+    function isApiSuccess(result) {
+        return !!(result && (result.success === true || result.code === 0 || result.status === 'success'));
+    }
+
+    // 停止爬取
+    async function stopCrawl() {
+        // 【修复】使用全局通知而不是浏览器弹窗
+        showConfirmToast('确定要停止正在进行的爬取任务吗？',
+            async () => {
+                try {
+                    ButtonStateManager.setStopping();
+
+                    const response = await fetch('/api/crawl/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ force: true })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (isApiSuccess(result)) {
+                        showToast('已发送停止命令，请等待任务完成...', 'success');
+                        // 不立即重置按钮状态，等待轮询检测到停止状态后再重置
+                    } else {
+                        ButtonStateManager.showError('stop', '停止失败: ' + (result.message || '未知错误'));
+                    }
+                } catch (error) {
+                    console.error('停止爬取失败:', error);
+                    ButtonStateManager.showError('stop', '停止请求失败: ' + error.message);
+                }
+            },
+            () => {
+                showToast('已取消停止操作', 'info');
+                console.log('用户取消停止');
+            }
+        );
+    }
+
+    // 强制清除任务
+    async function forceClearTask() {
+        // 使用系统统一的确认弹窗（非浏览器原生 confirm）
+        showConfirmToast('确定要强制清除当前任务吗？此操作将清除所有状态和信号，请仅在任务卡住时使用。',
+            async () => {
+                // 确认回调
+                try {
+                    const response = await fetch('/api/crawl/force-clear', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showToast('已强制清除任务', 'success');
+                        // 重置 UI 状态
+                        ButtonStateManager.setIdle();
+
+                        // 重置进度显示
+                        document.getElementById('progress-fill').style.width = '0%';
+                        document.getElementById('progress-text').textContent = '0%';
+                        document.getElementById('current-section').textContent = '空闲';
+                        document.getElementById('page-progress').textContent = '';
+
+                        // 强制刷新状态
+                        checkCrawlStatus();
+                    } else {
+                        showToast('清除失败: ' + (data.error || '未知错误'), 'error');
+                    }
+                } catch (error) {
+                    console.error('强制清除失败:', error);
+                    showToast('请求失败，请重试', 'error');
+                }
+            },
+            () => {
+                // 取消回调
+                showToast('已取消强制清除', 'info');
+            }
+        );
+    }
+
+    async function pauseCrawl() {
+        try {
+            // 【修复】防抖：如果按钮已经在处理中，忽略重复点击
+            const pauseBtn = document.getElementById('pauseBtn');
+            if (pauseBtn.disabled || pauseBtn.textContent.includes('正在')) {
+                console.log('⚠️ 暂停操作正在进行中，忽略重复点击');
+                return;
+            }
+
+            ButtonStateManager.setPausing();
+
+            const response = await fetch('/api/crawl/pause', { method: 'POST' });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            if (isApiSuccess(result)) {
+                showToast('已发送暂停命令...', 'success');
+                // 不立即更新按钮状态，等待轮询检测到暂停状态后再更新
+            } else {
+                ButtonStateManager.showError('pause', '暂停失败: ' + (result.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('暂停爬取失败:', error);
+            ButtonStateManager.showError('pause', '暂停请求失败: ' + error.message);
+        }
+    }
+
+    async function resumeCrawl() {
+        try {
+            // 【修复】防抖：如果按钮已经在处理中，忽略重复点击
+            const resumeBtn = document.getElementById('resumeBtn');
+            if (resumeBtn.disabled || resumeBtn.textContent.includes('正在')) {
+                console.log('⚠️ 恢复操作正在进行中，忽略重复点击');
+                return;
+            }
+
+            ButtonStateManager.setResuming();
+
+            const response = await fetch('/api/crawl/resume', { method: 'POST' });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            if (isApiSuccess(result)) {
+                showToast('已发送恢复命令...', 'success');
+                // 不立即更新按钮状态，等待轮询检测到恢复状态后再更新
+            } else {
+                ButtonStateManager.showError('resume', '恢复失败: ' + (result.message || '未知错误'));
+            }
+        } catch (error) {
+            console.error('恢复爬取失败:', error);
+            ButtonStateManager.showError('resume', '恢复请求失败: ' + error.message);
+        }
+    }
+
+    // ==================== 失败TID管理功能 ====================
+
+    // 加载失败TID统计
+    async function loadFailedTidsStats() {
+        try {
+            const response = await fetch('/api/failed-tids/summary');
+            const result = await response.json();
+
+            if (result.status === 'success' && result.data) {
+                const stats = result.data;
+
+                // 修复：后端返回的是 pending, success, abandoned 直接在 data 下
+                document.getElementById('pending-count').textContent =
+                    (stats.pending || 0) + (stats.retrying || 0);
+                document.getElementById('success-count').textContent = stats.success || 0;
+                document.getElementById('abandoned-count').textContent = stats.abandoned || 0;
+            } else {
+                document.getElementById('pending-count').textContent = '0';
+                document.getElementById('success-count').textContent = '0';
+                document.getElementById('abandoned-count').textContent = '0';
+            }
+        } catch (error) {
+            console.error('加载失败TID统计失败:', error);
+            showToast('加载失败TID统计失败', 'error');
+        }
+    }
+
+    // 切换重试模式选项显示
+    function toggleRetryModeOptions() {
+        const mode = document.querySelector('input[name="retryMode"]:checked').value;
+        const maxRoundsContainer = document.getElementById('maxRoundsContainer');
+        const modeTip = document.getElementById('modeTip');
+        const limit = parseInt(document.getElementById('retryLimit').value) || 0;
+        const maxRounds = parseInt(document.getElementById('maxRounds').value) || 0;
+
+        if (mode === 'continuous') {
+            maxRoundsContainer.style.display = 'block';
+            const totalMax = limit * maxRounds;
+            modeTip.className = 'mode-tip-box success';
+            modeTip.innerHTML = `
+                <span class="mode-tip-emoji">🔄</span>
+                <div class="mode-tip-text">
+                    <strong>循环模式</strong>：每轮处理 <strong>${limit}</strong> 个TID，
+                    最多 <strong>${maxRounds}</strong> 轮，
+                    预计最多处理 <strong>${totalMax}</strong> 个TID
+                </div>
+            `;
+        } else {
+            maxRoundsContainer.style.display = 'none';
+            modeTip.className = 'mode-tip-box info';
+            modeTip.innerHTML = `
+                <span class="mode-tip-emoji">💡</span>
+                <div class="mode-tip-text">
+                    <strong>单轮模式</strong>：处理 <strong>${limit}</strong> 个TID后停止
+                </div>
+            `;
+        }
+    }
+
+    // 重试失败TID
+    async function retryFailedTids() {
+        const mode = document.querySelector('input[name="retryMode"]:checked').value;
+        const limit = parseInt(document.getElementById('retryLimit').value);
+        const maxRounds = parseInt(document.getElementById('maxRounds').value);
+        const isContinuous = mode === 'continuous';
+
+        const modeDesc = isContinuous
+            ? `循环模式（每轮${limit}个，最多${maxRounds}轮）`
+            : `单轮模式（处理${limit}个）`;
+
+        showConfirmToast(`确定要使用 ${modeDesc} 重试失败的TID吗？`,
+            async () => {
+                try {
+                    const response = await fetch('/api/failed-tids/retry', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            limit: limit,
+                            batch_size: 10,
+                            continuous: isContinuous,
+                            max_rounds: maxRounds
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        showToast(result.message, 'success');
+                        // 延迟刷新统计
+                        setTimeout(loadFailedTidsStats, 5000);
+                    } else {
+                        showToast('启动重试任务失败: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('重试失败TID失败:', error);
+                    showToast('重试失败TID失败: ' + error.message, 'error');
+                }
+            },
+            () => {
+                showToast('已取消操作', 'info');
+                console.log('用户取消重试');
+            }
+        );
+    }
+
+    // 显示失败TID列表
+    async function showFailedTidsList(status = 'pending') {
+        const listDiv = document.getElementById('failed-tids-list-wrapper');
+        const contentDiv = document.getElementById('failed-tids-content');
+
+        const isCurrentlyExpanded = listDiv.classList.contains('expanded');
+
+        // 如果已经展开并且点击的是相同的状态，则收起
+        if (isCurrentlyExpanded && window.currentFailedTidsStatus === status) {
+            listDiv.classList.remove('expanded');
+            return;
+        }
+
+        // 显式显示列表或切换状态
+        listDiv.classList.add('expanded');
+        window.currentFailedTidsStatus = status;
+        contentDiv.innerHTML = '正在加载...';
+
+        try {
+            // 根据状态构建API URL
+            let apiUrl = '/api/failed-tids/list?limit=100';
+            if (status === 'abandoned') {
+                // 需要修改API以支持abandoned状态查询
+                apiUrl = '/api/failed-tids/list?status=abandoned&limit=100';
+            }
+
+            const response = await fetch(apiUrl);
+            const result = await response.json();
+
+            if (result.status === 'success' && result.data) {
+                const failedTids = result.data;
+
+                if (failedTids.length === 0) {
+                    const emptyMessage = status === 'abandoned' ? '暂无已放弃的TID' : '暂无待重试的TID';
+                    contentDiv.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--muted-foreground);">${emptyMessage}</div>`;
+                } else {
+                    let html = '';
+                    const listTitle = status === 'abandoned' ? '已放弃TID列表' : '待重试TID列表';
+
+                    // 更新列表标题
+                    document.querySelector('.failed-tid-list-title').textContent = listTitle;
+
+                    failedTids.forEach((item, index) => {
+                        // 根据状态显示不同的操作按钮
+                        let actionButtons = '';
+                        if (status === 'abandoned') {
+                            actionButtons = `
+                                <button onclick="restoreFailedTid(${item.tid})" class="btn btn-xs btn-success" title="重新加入重试列表">
+                                    重新重试
+                                </button>
+                            `;
+                        } else {
+                            actionButtons = `
+                                <button onclick="abandonFailedTid(${item.tid})" class="btn btn-xs btn-destructive" title="放弃此TID">
+                                    放弃
+                                </button>
+                            `;
+                        }
+
+                        html += `
+                            <div class="failed-tid-item">
+                                <div class="failed-tid-info">
+                                    <div class="failed-tid-id">TID: ${item.tid}</div>
+                                    <div class="failed-tid-meta">
+                                        <div class="failed-tid-section">
+                                            ${item.section || '未知板块'}
+                                        </div>
+                                        <div class="failed-tid-retry-count">
+                                            重试 ${item.retry_count} 次
+                                        </div>
+                                    </div>
+                                    <div class="failed-tid-reason">
+                                        ${item.failure_reason || '未知原因'}
+                                    </div>
+                                </div>
+                                <div class="failed-tid-actions">
+                                    ${actionButtons}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    contentDiv.innerHTML = html;
+                }
+            } else {
+                contentDiv.innerHTML = '<div style="color: var(--destructive);">加载失败TID列表失败</div>';
+            }
+        } catch (error) {
+            console.error('加载失败TID列表失败:', error);
+            contentDiv.innerHTML = '<div style="color: var(--destructive);">加载失败: ' + error.message + '</div>';
+        }
+    }
+
+    // 清理失败TID记录
+    async function cleanupFailedTids() {
+        const cleanupAction = async (data) => {
+            try {
+                const response = await fetch('/api/failed-tids/cleanup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                    loadFailedTidsStats();
+                    // 如果列表正开着，刷新它
+                    const wrapper = document.getElementById('failed-tids-list-wrapper');
+                    if (wrapper.style.maxHeight && wrapper.style.maxHeight !== '0px') {
+                        showFailedTidsList(window.currentFailedTidsStatus || 'pending');
+                    }
+                } else {
+                    showToast('清理失败: ' + result.message, 'error');
+                }
+            } catch (error) {
+                console.error('清理失败TID记录失败:', error);
+                showToast('清理失败: ' + error.message, 'error');
+            }
+        };
+
+        // 弹出更详细的清理选项
+        const choice = await showChoiceToast('请选择清理范围', [
+            { text: '清理 30 天前', value: '30days', color: 'btn-primary' },
+            { text: '清理 "解析失败"', value: 'keyword', color: 'btn-purple' },
+            { text: '清空全部', value: 'all', color: 'btn-destructive' }
+        ]);
+
+        if (choice === '30days') {
+            cleanupAction({ days: 30 });
+        } else if (choice === 'keyword') {
+            cleanupAction({ keyword: '解析失败' });
+        } else if (choice === 'all') {
+            showConfirmToast('确定要清空所有的失败记录吗？此操作不可撤销。',
+                () => cleanupAction({ all: true }),
+                () => console.log('用户取消清空全部')
+            );
+        }
+    }
+
+    // 放弃失败TID
+    async function abandonFailedTid(tid) {
+        showConfirmToast(`确定要放弃 TID ${tid} 吗？`,
+            async () => {
+                try {
+                    const response = await fetch('/api/failed-tids/abandon', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ tid })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        showToast(result.message, 'success');
+                        // 刷新列表和统计
+                        loadFailedTidsStats();
+                        showFailedTidsList('pending');
+                    } else {
+                        showToast('放弃失败: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('放弃失败TID失败:', error);
+                    showToast('放弃失败: ' + error.message, 'error');
+                }
+            },
+            () => {
+                showToast('已取消操作', 'info');
+                console.log('用户取消放弃');
+            }
+        );
+    }
+
+    // 恢复失败TID到重试列表
+    async function restoreFailedTid(tid) {
+        showConfirmToast(`确定要将 TID ${tid} 重新加入重试列表吗？`,
+            async () => {
+                try {
+                    const response = await fetch('/api/failed-tids/restore', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ tid })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        showToast(result.message, 'success');
+                        // 刷新列表和统计
+                        loadFailedTidsStats();
+                        showFailedTidsList('abandoned');
+                    } else {
+                        showToast('恢复失败: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('恢复失败TID失败:', error);
+                    showToast('恢复失败: ' + error.message, 'error');
+                }
+            },
+            () => {
+                showToast('已取消操作', 'info');
+                console.log('用户取消恢复');
+            }
+        );
+    }
+</script>
+{% endblock %}

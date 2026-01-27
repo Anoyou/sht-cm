@@ -1,0 +1,835 @@
+/* 配置页面特定样式 */
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* 大屏幕优化 */
+@media (min-width: 1200px) {
+    .config-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .config-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+.config-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--border-radius-xl);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    padding: 1.5rem;
+    transition: var(--transition);
+}
+
+.config-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.config-card h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    min-height: auto;
+}
+
+@media (max-width: 768px) {
+    .form-field {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        min-height: auto;
+    }
+}
+
+.form-left {
+    width: 100%;
+    min-width: 0;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-bottom: 0.25rem;
+}
+
+.form-desc {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    line-height: 1.3;
+}
+
+.form-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 2.5rem;
+    flex-wrap: wrap;
+}
+
+.form-right input,
+.form-right select {
+    flex: 1;
+    height: 2.5rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    transition: var(--transition-colors);
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-right input:focus,
+.form-right select:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 2px rgba(2, 8, 23, 0.1);
+}
+
+.status-badge {
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius);
+    background: transparent;
+    color: var(--foreground);
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 500;
+    min-width: auto;
+    justify-content: center;
+    border: 1px solid var(--border);
+}
+
+.status-badge::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--destructive);
+    flex-shrink: 0;
+}
+
+.status-badge.ok::before {
+    background: var(--emerald-500);
+}
+
+.status-badge.warning::before {
+    background: var(--amber-500);
+}
+
+/* 特殊网格布局 */
+.maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.maintenance-grid .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0;
+}
+
+/* 安全模式开关样式 */
+.switch-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--muted);
+    transition: 0.3s;
+    border-radius: 14px;
+    /* 圆角风格 */
+    border: 1px solid var(--border);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked+.slider {
+    background-color: var(--emerald-500);
+    border-color: var(--emerald-500);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+.switch-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    user-select: none;
+}
+
+.sht2bm-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.sht2bm-grid .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0;
+}
+
+.system-info-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.system-info-grid .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+    .maintenance-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+    }
+
+    .sht2bm-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .system-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+}
+
+/* 超小屏幕设备优化 */
+@media (max-width: 420px) {
+    .maintenance-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .sht2bm-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .system-info-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+}
+
+/* Telegram 模板编辑器 */
+.template-editor {
+    width: 100%;
+    min-height: 260px;
+    resize: vertical;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    box-sizing: border-box;
+    transition: var(--transition-colors);
+}
+
+.template-editor:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 2px rgba(2, 8, 23, 0.1);
+}
+
+.template-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+}
+
+.template-actions .btn {
+    min-width: 96px;
+}
+
+.template-hint {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    line-height: 1.4;
+}
+
+/* 浮动保存按钮 */
+.floating-save-bar {
+    position: fixed;
+    bottom: 0.75rem;
+    left: calc(var(--sidebar-width) + max(0px, env(safe-area-inset-left, 0px)) + 1.5rem);
+    right: calc(max(0px, env(safe-area-inset-right, 0px)) + 1.5rem);
+    width: auto;
+    box-sizing: border-box;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius-xl);
+    padding: 0.75rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+    box-shadow: var(--glass-shadow);
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.floating-save-bar .btn {
+    min-width: auto;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    height: 2.5rem;
+    flex: 1;
+    max-width: 300px;
+}
+
+/* 为页面内容添加底部padding，防止被浮动按钮遮挡 */
+.config-grid {
+    padding-bottom: 80px;
+}
+
+@media (max-width: 1024px) {
+
+    /* 平板端和移动端浮动保存按钮 - 侧边栏隐藏 */
+    .floating-save-bar {
+        left: calc(max(0px, env(safe-area-inset-left, 0px)) + 1.5rem);
+        right: calc(max(0px, env(safe-area-inset-right, 0px)) + 1.5rem);
+        width: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .floating-save-bar {
+        padding: 0.75rem;
+        z-index: 50;
+        margin-bottom: env(safe-area-inset-bottom, 0px);
+        left: calc(max(0px, env(safe-area-inset-left, 0px)) + 1rem);
+        right: calc(max(0px, env(safe-area-inset-right, 0px)) + 1rem);
+        width: auto;
+    }
+}
+
+.config-grid {
+    padding-bottom: 80px;
+}
+
+/* ==================== Telegram 模板编辑器优化样式 ==================== */
+
+.template-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.template-drawer {
+    background: var(--muted);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+.template-drawer.open {
+    max-height: 600px;
+    opacity: 1;
+    margin-bottom: 1.5rem;
+    border-color: var(--border);
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.template-drawer-header {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--foreground);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.template-drawer-content {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    white-space: pre-wrap;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* 详情块美化 (Accordions) */
+.template-section {
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    background: var(--background);
+    /* 内部使用背景色，区分于卡片 */
+    transition: box-shadow 0.2s ease;
+}
+
+.template-section:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.template-section summary {
+    padding: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--muted);
+    color: var(--foreground);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+    transition: background-color 0.2s;
+    font-size: 0.875rem;
+}
+
+.template-section summary:hover {
+    background: var(--accent);
+}
+
+.template-section summary::-webkit-details-marker {
+    display: none;
+}
+
+/* 自定义下拉箭头 */
+.template-section summary::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid var(--muted-foreground);
+    border-bottom: 2px solid var(--muted-foreground);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+    margin-left: auto;
+}
+
+.template-section[open] summary::after {
+    transform: rotate(225deg);
+}
+
+.template-grid {
+    padding: 1.25rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    background: var(--card);
+    /* 保持内容区白色/深色背景 */
+}
+
+@media (min-width: 1024px) {
+    .template-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.template-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* 修复解析模式与下方折叠面板的间距 */
+.template-form>.template-item {
+    margin-bottom: 1.5rem;
+}
+
+/* 标签样式 */
+.template-item-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 输入框样式统一 */
+.template-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background: var(--background);
+    color: var(--foreground);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    transition: all 0.2s ease;
+    resize: vertical;
+    min-height: 2.75rem;
+}
+
+.template-input:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px #3b82f633;
+    background: var(--card);
+    /* 聚焦时稍微高亮 */
+}
+
+.template-input:hover {
+    border-color: var(--muted-foreground);
+}
+
+/* 选择框特殊处理 */
+select.template-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+/* 使得全宽的输入框跨越两列 (在Grid布局中) */
+.template-item.full-width {
+    grid-column: 1 / -1;
+}
+
+/* 修正现有样式以适配新布局 */
+.template-actions {
+    width: auto !important;
+    /* 覆盖原有的width: 100% */
+    flex: 1;
+    min-width: 0;
+}
+
+.template-drawer-content {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    white-space: pre-wrap;
+    word-break: break-all;
+    /* 防止长字符串撑大容器 */
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* 占位符说明按钮样式微调 */
+.template-toolbar .btn-ghost {
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.template-toolbar .btn-ghost:hover {
+    color: var(--primary);
+    background: transparent;
+}
+
+/* 添加一个小图标给占位符按钮 (如果需要可以使用CSS伪元素) */
+.template-toolbar .btn-ghost::before {
+    content: "ℹ";
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: 10px;
+    line-height: 1;
+}
+
+/* 移动端响应式修复 */
+@media (max-width: 480px) {
+    .config-card {
+        padding: 1rem;
+    }
+
+    .template-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .template-toolbar .btn-ghost {
+        justify-content: center;
+        width: 100%;
+        border: 1px dashed var(--border);
+        /* 增加虚线边框增加辨识度 */
+        padding: 0.5rem;
+        border-radius: var(--border-radius);
+    }
+
+    .form-right input {
+        min-width: 0;
+        /* 允许 flex item 缩小 */
+    }
+
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* 优化输入框和Badge在小屏幕的排列 */
+    .form-right {
+        gap: 0.5rem;
+    }
+
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.5rem;
+    }
+}
+
+/* 全局最小宽度保护，防止表格或特定元素撑大页面 */
+.form-right {
+    min-width: 0;
+}
+
+.form-right input,
+.form-right select {
+    max-width: 100%;
+}
+
+/* 模板操作按钮和信息组的布局 */
+.template-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.template-info-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+/* 移动端对两个组的特殊处理 */
+@media (max-width: 480px) {
+    .template-toolbar {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .template-btn-group {
+        width: 100%;
+        gap: 0.5rem;
+        justify-content: space-between;
+        /* 按钮横向平分或居中，或者保持 space-between */
+        flex-wrap: nowrap;
+        /* 强制不换行 */
+    }
+
+    .template-btn-group .btn {
+        flex: 1;
+        /* 三个按钮等宽 */
+        min-width: 0;
+        padding: 0.5rem 0.25rem;
+        /* 减小内边距防止溢出 */
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .template-info-group {
+        width: 100%;
+        margin-left: 0;
+        justify-content: space-between;
+        /* 两端对齐：左边是Badge，右边是说明按钮 */
+    }
+
+    .template-info-group .btn-ghost {
+        flex: 0 0 auto;
+        width: auto;
+        border: none;
+        padding: 0;
+    }
+}
+
+/* 移除旧的 template-actions 样式以免冲突（如果它们还在的话） */
+/* 
+.template-actions { display: none; } 
+*/
+
+/* 确保解析模式使用标准form-field样式后有正确的下边距 */
+.template-form .form-field {
+    margin-bottom: 1.5rem;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: 1rem;
+}
+
+/* 卡片头部弹性布局 */
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-header-flex h3 {
+    margin-bottom: 0 !important;
+    /* 覆盖默认h3边距 */
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* 底部操作按钮区域 */
+.template-footer-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    /* 按钮靠右对齐 */
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+/* 确保移动端换行时按钮间距合适 */
+.template-footer-actions .btn {
+    white-space: nowrap;
+}
+
+.template-separator-line {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+}
+
+/* 移动端调整 */
+@media (max-width: 480px) {
+    .card-header-flex {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    /* 修复顶栏在移动端的错位问题 */
+    .header-actions {
+        width: auto;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+
+    .template-footer-actions {
+        flex-direction: row;
+        /* 强制水平排列 */
+        gap: 0.5rem;
+    }
+
+    .template-footer-actions .btn {
+        width: auto;
+        /* 取消全宽 */
+        flex: 1;
+        /* 均分空间 */
+        padding: 0.5rem 0.25rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* 沉浸式纯文本按钮 */
+.btn-text-immersive {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    text-decoration: none;
+    /* 默认无下划线 */
+}
+
+.btn-text-immersive:hover {
+    color: var(--primary);
+    text-decoration: underline;
+    /* 悬停时加下划线 */
+}

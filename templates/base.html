@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // 极致性能：在任何 CSS 解析前应用暗色主题，彻底杜绝白屏/黑屏闪烁
+        (function () {
+            try {
+                // 此时 DOM 可能未完全就绪，但 documentElement 总是存在的
+                const html = document.documentElement;
+                html.classList.add('sidebar-no-transition');
+
+                const theme = localStorage.getItem('theme') || 'auto';
+
+                // 清除旧的状态
+                html.classList.remove('dark', 'light');
+
+                if (theme === 'dark') {
+                    html.classList.add('dark');
+                    html.style.backgroundColor = '#000000';
+                } else if (theme === 'light') {
+                    html.classList.add('light');
+                    html.style.backgroundColor = '#f2f2f7';
+                } else {
+                    // 自动模式：根据系统偏好预设背景色
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        html.style.backgroundColor = '#000000';
+                    } else {
+                        html.style.backgroundColor = '#f2f2f7';
+                    }
+                    // 不添加 dark/light 类，让 CSS media query 接管
+                }
+
+                const sidebarPref = localStorage.getItem('sidebar_collapsed');
+                if (sidebarPref === '1') {
+                    html.classList.add('sidebar-pref-collapsed');
+                }
+            } catch (e) { }
+        })();
+
+        // 初始化并同步系统配置（从服务器加载）
+        async function syncConfiguration() {
+            try {
+                // 从服务器获取配置值
+                const response = await fetch('/api/config/values');
+                if (!response.ok) return;
+                const config = await response.json();
+
+                // 1. 同步安全模式
+                const safeMode = !!config.SAFE_MODE;
+                if (safeMode) {
+                    document.body.classList.add('safe-mode');
+                } else {
+                    document.body.classList.remove('safe-mode');
+                }
+
+                // 同步配置页面的开关状态 (如果当前在配置页)
+                const safeModeSwitch = document.getElementById('cfg-safe-mode');
+                const safeModeLabel = document.getElementById('safe-mode-label');
+                if (safeModeSwitch && safeModeSwitch.checked !== safeMode && document.activeElement !== safeModeSwitch) {
+                    safeModeSwitch.checked = safeMode;
+                    if (safeModeLabel) safeModeLabel.textContent = safeMode ? '开启' : '关闭';
+                }
+
+                // 2. 调度爬虫页面同步 (如果当前在爬虫页且有相应函数)
+                if (typeof window.syncCrawlerUI === 'function') {
+                    window.syncCrawlerUI(config);
+                    // 🚀 如果在爬虫页，同步配置时顺便即刻刷新一次爬虫状态
+                    if (typeof window.checkCrawlStatus === 'function') {
+                        window.checkCrawlStatus();
+                    }
+                }
+
+                // console.log('系统配置同步完成');
+            } catch (e) {
+                // 静默失败，避免影响用户体验
+            }
+        }
+
+        // 页面初次加载
+        document.addEventListener('DOMContentLoaded', syncConfiguration);
+
+        // 核心同步逻辑：
+        // 1. 监听页面可见性变化 (从其他标签页切回时即刻同步)
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) {
+                syncConfiguration();
+            }
+        });
+
+        // 2. 定时轮询 (即使页面在后台或跨设备操作也能感应)
+        // 设为 30 秒轮询一次，平衡性能与体验
+        setInterval(syncConfiguration, 30000);
+
+        // 3. 移动端侧边栏展开时，调整浮动条z-index
+        function adjustFloatingBarZIndex() {
+            const sidebar = document.querySelector('.sidebar');
+            const floatingBar = document.querySelector('.floating-save-bar');
+            const pagination = document.querySelector('.pagination');
+
+            if (!sidebar) return;
+
+            const isExpanded = sidebar.getAttribute('data-state') === 'expanded';
+            const zIndex = isExpanded ? '30' : '40';
+
+            if (floatingBar) floatingBar.style.zIndex = zIndex;
+            if (pagination) pagination.style.zIndex = zIndex;
+        }
+
+        // 监听侧边栏状态变化
+        const observer = new MutationObserver(adjustFloatingBarZIndex);
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                observer.observe(sidebar, { attributes: true, attributeFilter: ['data-state'] });
+                adjustFloatingBarZIndex();
+            }
+        });
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <!-- iOS/PWA 主题色适配 - 设置为 Header 的基准色以实现无缝融合 -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1e1e1e" media="(prefers-color-scheme: dark)">
+
+    <!-- iPhone 专用优化 -->
+    <meta name="format-detection" content="telephone=no, date=no, email=no, address=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" id="status-bar-style">
+    <meta name="apple-mobile-web-app-title" content="SHT资源管理">
+    <meta name="apple-touch-fullscreen" content="yes">
+
+    <!-- iOS 安全区域和缩放控制 -->
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+
+    <!-- PWA 支持 -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+
+    <!-- iOS PWA 启动画面 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-2048-2732.png') }}"
+        media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-1668-2224.png') }}"
+        media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-1536-2048.png') }}"
+        media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-1125-2436.png') }}"
+        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-1242-2208.png') }}"
+        media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-750-1334.png') }}"
+        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+    <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-splash-640-1136.png') }}"
+        media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+
+    <title>{% block title %}SHT资源聚合系统{% endblock %}</title>
+
+    <!-- 统一的CSS样式 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+    <!-- 页面特定的CSS -->
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- 状态栏覆盖层 - 必须是 body 的第一个子元素，用于 iOS 主题切换时实时更新状态栏颜色 -->
+    <div class="status-bar-overlay" id="statusBarOverlay"></div>
+    <div class="safe-area-bottom-overlay" id="safeAreaBottomOverlay"></div>
+
+    <div class="group/sidebar-wrapper">
+        <!-- Toast容器 -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- 侧边栏 -->
+        {% include 'components/sidebar.html' %}
+
+        <!-- 主内容区域 -->
+        <div id="content">
+            <!-- 顶部栏 -->
+            {% include 'components/header.html' %}
+
+            <!-- 主要内容 -->
+            <main class="main-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+
+        <!-- 健康检查抽屉 -->
+        {% include 'components/health_drawer.html' %}
+
+        <!-- 更新日志抽屉 -->
+        {% include 'components/changelog_drawer.html' %}
+    </div>
+
+    <!-- 统一的JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- PWA Service Worker 注册 -->
+    <script>
+        // 注册 Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+
+                        // 检查更新
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // 有新版本可用
+                                    showConfirmToast('发现新版本，是否立即更新？',
+                                        () => {
+                                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                            window.location.reload();
+                                        },
+                                        () => {
+                                            console.log('用户取消更新');
+                                        }
+                                    );
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed: ', error);
+                    });
+
+                // 监听 Service Worker 控制器变化
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
+            });
+        }
+
+        // PWA 安装提示
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // 显示安装提示（可以自定义UI）
+            console.log('PWA 可以安装');
+
+            // 可以在这里显示自定义的安装按钮
+            // showInstallButton();
+        });
+
+        // 安装完成后的处理
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA 已安装');
+            deferredPrompt = null;
+        });
+    </script>
+
+    <!-- 页面特定的JavaScript -->
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

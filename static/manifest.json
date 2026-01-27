@@ -1,0 +1,138 @@
+{
+  "name": "SHT资源爬取管理平台",
+  "short_name": "SHT管理",
+  "version": "1.0.0",
+  "description": "SHT资源聚合系统 - 专业的资源爬取与管理平台",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "zh-CN",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "爬虫管理",
+      "short_name": "爬虫",
+      "description": "管理和配置资源爬取任务",
+      "url": "/crawler",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-crawler.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "资源浏览",
+      "short_name": "资源",
+      "description": "浏览和搜索已爬取的资源",
+      "url": "/categories",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-resources.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "系统配置",
+      "short_name": "配置",
+      "description": "系统设置和配置管理",
+      "url": "/config",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-config.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "服务监控",
+      "short_name": "服务",
+      "description": "监控和管理系统服务",
+      "url": "/services",
+      "icons": [
+        {
+          "src": "/static/icons/shortcut-services.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/desktop-home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "桌面端首页"
+    },
+    {
+      "src": "/static/screenshots/mobile-home.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "移动端首页"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
+}

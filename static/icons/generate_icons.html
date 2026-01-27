@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PWA图标生成器</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        canvas { border: 1px solid #ccc; margin: 10px; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+        .icon-item { text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>SHT PWA图标生成器</h1>
+    <p>右键点击图标保存为PNG文件</p>
+    
+    <div class="icon-grid" id="iconGrid"></div>
+    
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const iconGrid = document.getElementById('iconGrid');
+        
+        sizes.forEach(size => {
+            const container = document.createElement('div');
+            container.className = 'icon-item';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 创建渐变背景
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#3b82f6');
+            gradient.addColorStop(1, '#1d4ed8');
+            
+            // 绘制圆角矩形背景
+            const radius = size * 0.15;
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+            
+            // 绘制SHT文字
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.25}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('SHT', size / 2, size * 0.4);
+            
+            // 绘制副标题
+            ctx.font = `${size * 0.08}px Arial`;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillText('资源管理', size / 2, size * 0.55);
+            
+            // 绘制装饰圆圈
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = size * 0.008;
+            ctx.beginPath();
+            ctx.arc(size / 2, size * 0.7, size * 0.12, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = size * 0.006;
+            ctx.beginPath();
+            ctx.arc(size / 2, size * 0.7, size * 0.08, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            ctx.arc(size / 2, size * 0.7, size * 0.04, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            const label = document.createElement('p');
+            label.textContent = `${size}x${size}`;
+            
+            container.appendChild(canvas);
+            container.appendChild(label);
+            iconGrid.appendChild(container);
+        });
+        
+        // 添加roundRect方法支持（如果浏览器不支持）
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.moveTo(x + radius, y);
+                this.lineTo(x + width - radius, y);
+                this.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.lineTo(x + width, y + height - radius);
+                this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.lineTo(x + radius, y + height);
+                this.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.lineTo(x, y + radius);
+                this.quadraticCurveTo(x, y, x + radius, y);
+                this.closePath();
+            };
+        }
+    </script>
+</body>
+</html>

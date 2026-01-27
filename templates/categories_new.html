@@ -1,0 +1,1459 @@
+{% extends "base.html" %}
+
+{% block title %}资源 - SHT{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/categories.css">
+<style>
+    /* 碰撞效果视觉增强 */
+    .collision-highlight {
+        animation: collision-pulse 0.3s ease-out;
+    }
+
+    @keyframes collision-pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.7;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">资源</h1>
+
+<!-- 筛选区域 -->
+<div class="filters-section">
+    <div class="filters-grid">
+        <div class="filter-group">
+            <label for="filterCategory">所属板块</label>
+            <select id="filterCategory">
+                <option value="">加载中...</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="perPage">每页</label>
+            <select id="perPage">
+                <option value="20">20</option>
+                <option value="40">40</option>
+                <option value="80">80</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filterStart">开始日期</label>
+            <input type="date" id="filterStart">
+        </div>
+        <div class="filter-group">
+            <label for="filterEnd">结束日期</label>
+            <input type="date" id="filterEnd">
+        </div>
+        <div class="filter-group" style="grid-column: span 2;">
+            <label>数据缺失标签快捷筛选</label>
+            <div id="incompleteTags" class="tag-group">
+                <div class="filter-tag" data-value="sub_type_missing">分类缺失</div>
+                <div class="filter-tag" data-value="date_missing">日期缺失</div>
+                <div class="filter-tag" data-value="size_missing">大小缺失</div>
+                <div class="filter-tag danger" data-value="total_loss">全部缺失</div>
+            </div>
+            <input type="hidden" id="filterIncomplete" value="">
+        </div>
+        <div class="filter-group">
+            <label for="filterKeyword">关键词</label>
+            <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                <input type="text" id="filterKeyword" placeholder="搜索标题..."
+                    style="flex: 1; height: 2.75rem; padding: 0 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font-size: 0.875rem;">
+                <button id="filterBtn" class="btn btn-purple">筛选</button>
+                <button id="clearBtn" class="btn btn-primary">还原</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批量操作工具栏 -->
+<div id="batchActionBar" class="batch-action-bar"
+    style="display: none; position: sticky; top: 1rem; z-index: 100; margin-bottom: 2rem; padding: 1.25rem; background: var(--card); border: 2px solid var(--primary); border-radius: 16px; align-items: center; justify-content: space-between; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
+    <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <div style="display: flex; flex-direction: column;">
+            <span id="selectedCountText" style="color: var(--primary); font-weight: 700; font-size: 1.125rem;">已选择 0
+                项</span>
+            <span id="matchTotalInfo" style="font-size: 0.75rem; color: var(--muted-foreground); opacity: 0.8;">当前筛选匹配共
+                0 条</span>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <button class="btn btn-primary btn-pink" onclick="selectAllVisible()">全选本页</button>
+            <button class="btn btn-outline btn-pink" onclick="deselectAll()">清空选项</button>
+        </div>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+        <div style="display: flex; gap: 0.5rem; background: var(--muted); padding: 0.25rem; border-radius: 10px;">
+            <button class="btn btn-success" onclick="batchRecycle(false)"
+                style="padding: 0.6rem 1.2rem; filter: brightness(1.1); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">重爬选中</button>
+            <button class="btn btn-destructive" onclick="batchRecycle(true)"
+                style="padding: 0.6rem 1.2rem; filter: brightness(1.1); box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);">全量打回(跨页)</button>
+        </div>
+        <button class="btn btn-ghost" onclick="toggleSelectMode(false)"
+            style="padding: 0.5rem; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"
+            title="退出">✕</button>
+    </div>
+</div>
+
+<div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+    <button id="toggleSelectBtn" class="btn btn-purple" onclick="toggleSelectMode(true)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        开启多选管理
+    </button>
+</div>
+
+<!-- 筛选状态指示器 -->
+<div id="filterStatus" class="filter-status">
+    <span>当前筛选条件已保存，切换页面后会自动恢复</span>
+</div>
+
+<!-- 资源列表 -->
+<div id="resourceList">
+    <div class="loading">正在加载资源...</div>
+</div>
+
+<!-- 分页 -->
+<div id="pagination" class="pagination"></div>
+
+<!-- 大图查看器 -->
+<div id="lightbox" class="lightbox">
+    <img id="lightboxImage" class="lightbox-image" src="" alt="大图预览">
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 资源页面特定的JavaScript
+    let currentPage = 1;
+    let isLoading = false;
+    let t = 0; // 全局时间戳，用于碰撞检测
+
+    // 粒子配置
+    const PARTICLES_CONFIG = {
+        showRings: false,      // 是否显示环形粒子
+        showBg: true,          // 是否显示背景粒子
+    };
+
+    // 筛选状态管理
+    const FILTER_STORAGE_KEY = 'sht_resource_filters';
+
+    document.addEventListener('DOMContentLoaded', function () {
+        bindEvents();
+        initFilterTags(); // 初始化标签点击
+
+        // 并行加载数据
+        Promise.all([
+            loadCategories()
+        ]).then(() => {
+            // 恢复筛选状态
+            const savedState = restoreFilterState();
+            if (savedState) {
+                applyFilterStateToUI(savedState);
+                // 静默恢复筛选条件，不显示通知
+            }
+
+            // 加载资源
+            loadResources(savedState ? savedState.page : 1);
+        });
+    });
+
+    // 保存筛选状态
+    function saveFilterState() {
+        try {
+            const filterState = {
+                category: document.getElementById('filterCategory').value,
+                perPage: document.getElementById('perPage').value,
+                startDate: document.getElementById('filterStart').value,
+                endDate: document.getElementById('filterEnd').value,
+                keyword: document.getElementById('filterKeyword').value.trim(),
+                page: currentPage,
+                timestamp: Date.now()
+            };
+
+            localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filterState));
+            updateFilterStatusIndicator(filterState);
+        } catch (e) {
+            console.error('保存筛选状态失败', e);
+        }
+    }
+
+    // 更新筛选状态指示器
+    function updateFilterStatusIndicator(filterState) {
+        const indicator = document.getElementById('filterStatus');
+        if (!indicator) return;
+
+        const hasActiveFilters = filterState.category ||
+            filterState.startDate ||
+            filterState.endDate ||
+            filterState.keyword ||
+            filterState.perPage !== '20';
+
+        if (hasActiveFilters) {
+            indicator.style.display = 'block';
+
+            const conditions = [];
+            if (filterState.category) conditions.push(`板块: ${filterState.category}`);
+            if (filterState.keyword) conditions.push(`关键词: ${filterState.keyword}`);
+            if (filterState.startDate) conditions.push(`开始: ${filterState.startDate}`);
+            if (filterState.endDate) conditions.push(`结束: ${filterState.endDate}`);
+            if (filterState.perPage !== '20') conditions.push(`每页: ${filterState.perPage}`);
+
+            const conditionText = conditions.length > 0 ? ` (${conditions.join(', ')})` : '';
+            indicator.innerHTML = `<span>筛选条件已保存${conditionText}</span>`;
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
+
+    // 恢复筛选状态
+    function restoreFilterState() {
+        try {
+            const saved = localStorage.getItem(FILTER_STORAGE_KEY);
+            if (!saved) return null;
+
+            const filterState = JSON.parse(saved);
+
+            // 检查状态是否过期（24小时）
+            const maxAge = 24 * 60 * 60 * 1000;
+            if (Date.now() - filterState.timestamp > maxAge) {
+                localStorage.removeItem(FILTER_STORAGE_KEY);
+                return null;
+            }
+
+            return filterState;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // 应用筛选状态到UI
+    function applyFilterStateToUI(filterState) {
+        if (!filterState) return;
+
+        try {
+            if (filterState.category) {
+                document.getElementById('filterCategory').value = filterState.category;
+            }
+            if (filterState.perPage) {
+                document.getElementById('perPage').value = filterState.perPage;
+            }
+            if (filterState.startDate) {
+                document.getElementById('filterStart').value = filterState.startDate;
+            }
+            if (filterState.endDate) {
+                document.getElementById('filterEnd').value = filterState.endDate;
+            }
+            if (filterState.keyword) {
+                document.getElementById('filterKeyword').value = filterState.keyword;
+            }
+
+            currentPage = filterState.page || 1;
+        } catch (e) {
+            console.error('应用筛选状态失败', e);
+        }
+    }
+
+    // 清除筛选状态
+    function clearFilterState() {
+        try {
+            localStorage.removeItem(FILTER_STORAGE_KEY);
+            // 同时重置标签
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            document.getElementById('filterIncomplete').value = "";
+        } catch (e) {
+            console.error('清除筛选状态失败', e);
+        }
+    }
+
+    // ================== 多选逻辑 ==================
+    let isSelectMode = false;
+    let selectedTids = new Set();
+    let currentMatchTotal = 0; // 存储当前筛选的总数
+
+    // 初始化标签点击事件
+    function initFilterTags() {
+        const tags = document.querySelectorAll('.filter-tag');
+        const hiddenInput = document.getElementById('filterIncomplete');
+
+        tags.forEach(tag => {
+            tag.addEventListener('click', () => {
+                tag.classList.toggle('active');
+
+                // 更新隐藏表单值 (逗号分隔)
+                const activeValues = Array.from(document.querySelectorAll('.filter-tag.active'))
+                    .map(t => t.dataset.value);
+                hiddenInput.value = activeValues.join(',');
+
+                // 自动触发筛选
+                loadResources(1);
+            });
+        });
+    }
+
+    function toggleSelectMode(enabled) {
+        isSelectMode = enabled;
+        const btn = document.getElementById('toggleSelectBtn');
+        const bar = document.getElementById('batchActionBar');
+
+        if (enabled) {
+            btn.style.display = 'none';
+            bar.style.display = 'flex';
+        } else {
+            btn.style.display = 'flex';
+            bar.style.display = 'none';
+            selectedTids.clear();
+        }
+
+        updateSelectedUI();
+        renderCurrentPage();
+    }
+
+    function toggleResourceSelection(event, tid) {
+        if (event) event.stopPropagation();
+        tid = tid.toString();
+
+        if (selectedTids.has(tid)) {
+            selectedTids.delete(tid);
+        } else {
+            selectedTids.add(tid);
+        }
+
+        updateSelectedUI();
+    }
+
+    function updateSelectedUI() {
+        const countText = document.getElementById('selectedCountText');
+        countText.textContent = `已选择 ${selectedTids.size} 项`;
+
+        const totalInfo = document.getElementById('matchTotalInfo');
+        totalInfo.textContent = `当前筛选匹配共 ${currentMatchTotal} 条`;
+
+        // 更新所有可见卡片的选中状态
+        document.querySelectorAll('.resource-card').forEach(card => {
+            const cardTid = card.dataset.tid;
+            const checkbox = card.querySelector('.selector-checkbox');
+            if (selectedTids.has(cardTid)) {
+                card.classList.add('selected');
+                if (checkbox) checkbox.classList.add('checked');
+            } else {
+                card.classList.remove('selected');
+                if (checkbox) checkbox.classList.remove('checked');
+            }
+        });
+    }
+
+    function selectAllVisible() {
+        document.querySelectorAll('.resource-card').forEach(card => {
+            selectedTids.add(card.dataset.tid);
+        });
+        updateSelectedUI();
+    }
+
+    function deselectAll() {
+        selectedTids.clear();
+        updateSelectedUI();
+    }
+
+    async function batchRecycle(allMatching = false) {
+        const count = allMatching ? currentMatchTotal : selectedTids.size;
+
+        if (count === 0) {
+            showToast('没有可操作的对象', 'warning');
+            return;
+        }
+
+        const confirmMsg = allMatching
+            ? `⚠️ 确定要将当前筛选下的全部 ${count} 条资源打回重试队列吗？\n(包含所有页面的未显示项)`
+            : `确定要将选中的 ${count} 条资源打回重试队列吗？`;
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const payload = {
+                all_matching: allMatching,
+                tids: Array.from(selectedTids).map(t => parseInt(t))
+            };
+
+            // 如果是全量匹配，需要带上当前所有的过滤器参数
+            if (allMatching) {
+                payload.filters = {
+                    category: document.getElementById('filterCategory').value,
+                    incomplete_type: document.getElementById('filterIncomplete').value,
+                    search: document.getElementById('filterKeyword').value.trim(),
+                    date_start: document.getElementById('filterStart').value,
+                    date_end: document.getElementById('filterEnd').value
+                };
+            }
+
+            const response = await fetch('/api/resources/batch-recycle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showToast(result.message, 'success');
+                selectedTids.clear();
+                if (allMatching) toggleSelectMode(false);
+                loadResources(1); // 刷新到第一页
+            } else {
+                showToast(result.message || '操作失败', 'error');
+            }
+        } catch (error) {
+            showToast('网络请求失败', 'error');
+        }
+    }
+
+    function renderCurrentPage() {
+        // 获取当前缓存的数据或重新加载
+        loadResources(currentPage);
+    }
+
+    // API调用函数 - 修复响应格式处理
+    async function fetchAPI(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const result = await response.json();
+        // 处理两种响应格式：1) 包装格式 {success: true, data: {...}} 2) 直接数据
+        return result.data !== undefined ? result.data : result;
+    }
+
+    // 加载板块
+    async function loadCategories() {
+        try {
+            const categories = await fetchAPI('/api/categories');
+            const select = document.getElementById('filterCategory');
+
+            select.innerHTML = '<option value="">所有板块</option>';
+
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = `${cat.name} (${cat.count})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('板块加载失败', error);
+            const select = document.getElementById('filterCategory');
+            select.innerHTML = '<option value="">加载失败</option>';
+        }
+    }
+
+    // 加载资源
+    async function loadResources(page = 1) {
+        if (isLoading) return;
+
+        isLoading = true;
+        currentPage = page;
+
+        try {
+            showLoading();
+
+            // 获取筛选参数
+            const category = document.getElementById('filterCategory').value;
+            const incomplete = document.getElementById('filterIncomplete').value;
+            const perPage = document.getElementById('perPage').value;
+            const startDate = document.getElementById('filterStart').value;
+            const endDate = document.getElementById('filterEnd').value;
+            const keyword = document.getElementById('filterKeyword').value.trim();
+
+            // 构建URL
+            let url = `/api/resources?page=${page}&per_page=${perPage}`;
+            if (category) url += `&category=${encodeURIComponent(category)}`;
+            if (incomplete) url += `&incomplete_type=${encodeURIComponent(incomplete)}`;
+            if (keyword) url += `&search=${encodeURIComponent(keyword)}`;
+            if (startDate) url += `&date_start=${encodeURIComponent(startDate)}`;
+            if (endDate) url += `&date_end=${encodeURIComponent(endDate)}`;
+
+            const data = await fetchAPI(url);
+
+            // 更新匹配总数
+            currentMatchTotal = data.total || 0;
+
+            // 渲染资源列表
+            renderResources(data.resources || []);
+
+            // 渲染分页
+            renderPagination(data.pages || 1, page, data.total || 0);
+
+            // 更新 UI 中的总数信息
+            updateSelectedUI();
+
+            // 保存当前筛选状态
+            saveFilterState();
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    // 渲染资源列表
+    function renderResources(resources) {
+        const container = document.getElementById('resourceList');
+
+        if (!resources || resources.length === 0) {
+            container.innerHTML = '<div class="loading">没有找到符合条件的资源</div>';
+            return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'resources-grid';
+
+        resources.forEach(resource => {
+            const card = document.createElement('div');
+            card.className = 'resource-card';
+            card.dataset.tid = resource.tid;
+
+            // 如果处于多选模式，添加选中状态
+            if (isSelectMode && selectedTids.has(resource.tid.toString())) {
+                card.classList.add('selected');
+            }
+
+            const imgSrc = (resource.preview_images && resource.preview_images.length > 0)
+                ? resource.preview_images[0] : '';
+
+            card.innerHTML = `
+            ${isSelectMode ? `
+                <div class="resource-selector" onclick="toggleResourceSelection(event, '${resource.tid}')">
+                    <div class="selector-checkbox ${selectedTids.has(resource.tid.toString()) ? 'checked' : ''}"></div>
+                </div>
+            ` : ''}
+            <div class="resource-thumb-container" onclick="${isSelectMode ? `toggleResourceSelection(event, '${resource.tid}')` : `openLightbox('${imgSrc}')`}">
+                ${imgSrc ?
+                    `<img class="resource-thumb" src="${imgSrc}" alt="预览图" onerror="this.style.display='none'">` :
+                    `<div class="resource-thumb"></div>`
+                }
+                <div class="resource-thumb-mask">
+                    <canvas class="spoiler-canvas"></canvas>
+                </div>
+            </div>
+            <div class="resource-body">
+                <div class="resource-title">${resource.title || '无标题'}</div>
+                <div class="resource-meta">
+                    <span class="resource-badge type">${resource.sub_type || '未知'}</span>
+                    <span class="resource-badge date">${resource.publish_date || '未知'}</span>
+                    <span class="resource-badge size">${resource.size ? (resource.size + 'MB') : '未知'}</span>
+                </div>
+                <div class="resource-actions">
+                    <a class="btn btn-purple" href="https://sehuatang.org/forum.php?mod=viewthread&tid=${resource.tid}" target="_blank">查看详情</a>
+                    ${resource.magnet ?
+                    `<button class="btn btn-success" onclick="copyMagnet(this)" data-magnet="${resource.magnet.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">复制磁力</button>` :
+                    `<button class="btn btn-ghost" disabled>无磁力链接</button>`
+                }
+                </div>
+            </div>
+        `;
+
+            grid.appendChild(card);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(grid);
+        initSpoilerCanvases();
+    }
+
+    // 渲染分页
+    function renderPagination(totalPages, currentPage, totalCount) {
+        const container = document.getElementById('pagination');
+        container.innerHTML = '';
+
+        if (totalPages <= 1 || totalCount <= 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'flex';
+
+        // 首页
+        if (currentPage > 1) {
+            const firstBtn = document.createElement('button');
+            firstBtn.className = 'btn btn-pagination';
+            firstBtn.textContent = '首';
+            firstBtn.title = '首页';
+            firstBtn.onclick = () => loadResources(1);
+            container.appendChild(firstBtn);
+        }
+
+        // 上一页
+        if (currentPage > 1) {
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-pagination btn-pink';
+            prevBtn.textContent = '◀';
+            prevBtn.title = '上一页';
+            prevBtn.onclick = () => loadResources(currentPage - 1);
+            container.appendChild(prevBtn);
+        }
+
+        // 页码逻辑：桌面端显示前后各2页，移动端显示前后各1页
+        let startPage, endPage;
+        const isMobile = window.innerWidth <= 768;
+        const pageRange = isMobile ? 1 : 2;
+
+        if (totalPages <= 2 * pageRange + 1) {
+            // 总页数小于等于范围，显示所有页码
+            startPage = 1;
+            endPage = totalPages;
+        } else {
+            // 显示当前页前后各pageRange页
+            startPage = Math.max(1, currentPage - pageRange);
+            endPage = Math.min(totalPages, currentPage + pageRange);
+
+            // 如果靠近开头，向后扩展
+            if (startPage === 1) {
+                endPage = Math.min(totalPages, 1 + 2 * pageRange);
+            }
+            // 如果靠近结尾，向前扩展
+            if (endPage === totalPages) {
+                startPage = Math.max(1, totalPages - 2 * pageRange);
+            }
+        }
+
+        // 如果起始页不是1，显示省略号
+        if (startPage > 1) {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'pagination-ellipsis';
+            ellipsis.textContent = '...';
+            container.appendChild(ellipsis);
+        }
+
+        // 页码按钮
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = i === currentPage ? 'btn btn-pagination btn-primary' : 'btn btn-pagination';
+            pageBtn.textContent = i;
+            pageBtn.onclick = () => loadResources(i);
+            container.appendChild(pageBtn);
+        }
+
+        // 如果结束页不是最后一页，显示省略号
+        if (endPage < totalPages) {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'pagination-ellipsis';
+            ellipsis.textContent = '...';
+            container.appendChild(ellipsis);
+        }
+
+        // 下一页
+        if (currentPage < totalPages) {
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'btn btn-pagination btn-pink';
+            nextBtn.textContent = '▶';
+            nextBtn.title = '下一页';
+            nextBtn.onclick = () => loadResources(currentPage + 1);
+            container.appendChild(nextBtn);
+        }
+
+        // 尾页
+        if (currentPage < totalPages) {
+            const lastBtn = document.createElement('button');
+            lastBtn.className = 'btn btn-pagination';
+            lastBtn.textContent = '尾';
+            lastBtn.title = '尾页';
+            lastBtn.onclick = () => loadResources(totalPages);
+            container.appendChild(lastBtn);
+        }
+
+        // 显示统计信息
+        const info = document.createElement('span');
+        info.className = 'pagination-info';
+        info.textContent = `第${currentPage}页，共${totalPages}页，总计${totalCount}条记录`;
+        container.appendChild(info);
+    }
+
+    // 复制磁力链接 - 移动端优化版本
+    function copyMagnet(button) {
+        let magnetLink;
+
+        // 如果传入的是按钮元素，从data-magnet属性获取
+        if (button && button.getAttribute) {
+            magnetLink = button.getAttribute('data-magnet');
+        } else {
+            // 如果传入的是字符串，直接使用
+            magnetLink = button;
+        }
+
+        if (!magnetLink) {
+            showToast('没有找到磁力链接', 'warning');
+            return;
+        }
+
+        // 检测是否为移动设备
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // 移动端优化：防止页面缩放
+        if (isMobile) {
+            // 阻止默认行为和事件冒泡
+            if (button && button.blur) {
+                button.blur();
+            }
+
+            // 延迟执行复制，避免与其他事件冲突
+            setTimeout(() => {
+                performCopy(magnetLink);
+            }, 100);
+        } else {
+            performCopy(magnetLink);
+        }
+
+        function performCopy(text) {
+            // 优先使用现代 Clipboard API，但提供完整的降级方案
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('磁力链接已复制到剪贴板', 'success');
+                }).catch((error) => {
+                    console.warn('Clipboard API 失败，使用降级方案:', error);
+                    fallbackCopy(text);
+                });
+            } else {
+                // 降级方案：使用传统的 execCommand
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-999999px';
+                textarea.style.top = '-999999px';
+                textarea.style.opacity = '0';
+                textarea.style.pointerEvents = 'none';
+                textarea.setAttribute('readonly', '');
+                textarea.setAttribute('contenteditable', 'true');
+
+                document.body.appendChild(textarea);
+
+                // 移动端特殊处理
+                if (isMobile) {
+                    textarea.setSelectionRange(0, 99999);
+                    textarea.focus();
+                    textarea.select();
+                } else {
+                    textarea.focus();
+                    textarea.select();
+                }
+
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                if (successful) {
+                    showToast('磁力链接已复制到剪贴板', 'success');
+                } else {
+                    showToast('复制失败，请手动复制磁力链接', 'error');
+                    console.error('execCommand copy 失败');
+                }
+            } catch (error) {
+                console.error('降级复制方案失败:', error);
+                showToast('复制失败: ' + error.message, 'error');
+            }
+        }
+    }
+
+    // 显示加载状态
+    function showLoading() {
+        const container = document.getElementById('resourceList');
+        container.innerHTML = '<div class="loading">正在加载...</div>';
+    }
+
+    // 显示错误信息
+    function showError(message) {
+        const container = document.getElementById('resourceList');
+        container.innerHTML = `
+        <div class="error-message">
+            <h3>加载失败</h3>
+            <p>${message}</p>
+            <button class="btn btn-primary" onclick="loadResources(1)">重试</button>
+        </div>
+    `;
+    }
+
+    // 清除所有筛选条件
+    function clearFilters() {
+        document.getElementById('filterCategory').value = '';
+        document.getElementById('perPage').value = '20';
+        document.getElementById('filterStart').value = '';
+        document.getElementById('filterEnd').value = '';
+        document.getElementById('filterKeyword').value = '';
+
+        clearFilterState();
+
+        const indicator = document.getElementById('filterStatus');
+        if (indicator) {
+            indicator.style.display = 'none';
+        }
+
+        loadResources(1);
+    }
+
+    // 显示筛选恢复提示（已禁用）
+    function showFilterRestoreNotice() {
+        // 静默恢复筛选条件，不显示通知
+        return;
+    }
+
+    // 事件绑定
+    function bindEvents() {
+        document.getElementById('filterBtn').addEventListener('click', () => loadResources(1));
+        document.getElementById('clearBtn').addEventListener('click', clearFilters);
+
+        document.getElementById('filterKeyword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadResources(1);
+            }
+        });
+
+        document.getElementById('filterCategory').addEventListener('change', () => {
+            loadResources(1);
+        });
+
+        document.getElementById('perPage').addEventListener('change', () => {
+            loadResources(1);
+        });
+
+        document.getElementById('filterStart').addEventListener('change', saveFilterState);
+        document.getElementById('filterEnd').addEventListener('change', saveFilterState);
+
+        let keywordTimeout;
+        document.getElementById('filterKeyword').addEventListener('input', () => {
+            clearTimeout(keywordTimeout);
+            keywordTimeout = setTimeout(saveFilterState, 500);
+        });
+
+        // 监听侧边栏状态变化，调整分页条位置
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            const observer = new MutationObserver(() => {
+                updatePaginationPosition();
+            });
+            observer.observe(sidebar, { attributes: true, attributeFilter: ['data-state'] });
+        }
+
+        // 监听窗口大小变化
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(updatePaginationPosition, 100);
+        });
+
+        // 初始化分页条位置
+        updatePaginationPosition();
+    }
+
+    // 更新分页条位置以适应侧边栏状态
+    function updatePaginationPosition() {
+        const pagination = document.getElementById('pagination');
+        if (!pagination) return;
+
+        const sidebar = document.querySelector('.sidebar');
+        if (!sidebar) return;
+
+        const isCollapsed = sidebar.getAttribute('data-state') === 'collapsed';
+        const windowWidth = window.innerWidth;
+        const isDesktop = windowWidth > 1024;
+
+        if (isDesktop) {
+            // PC 端 (>1024px) - 侧边栏可见
+            if (isCollapsed) {
+                // 侧边栏收起时，使用 sidebar-width-icon
+                const sidebarWidthIcon = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width-icon').trim();
+                const safeAreaLeft = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-left').trim() || '0px';
+                pagination.style.left = `calc(${sidebarWidthIcon} + max(0px, ${safeAreaLeft}) + 1.5rem)`;
+            } else {
+                // 侧边栏展开时，使用 sidebar-width（CSS 默认值）
+                pagination.style.left = '';
+            }
+        } else {
+            // 平板端和移动端 (≤1024px) - 侧边栏隐藏，不需要调整
+            pagination.style.left = '';
+        }
+    }
+
+    // 大图查看器功能
+    function openLightbox(imgSrc) {
+        if (!imgSrc) return;
+
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImage = document.getElementById('lightboxImage');
+
+        lightboxImage.src = imgSrc;
+        lightbox.classList.add('active');
+
+        // 点击lightbox关闭
+        lightbox.onclick = closeLightbox;
+    }
+
+    function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+    }
+
+    // ============================================
+    // Telegram 风格粒子遮罩（Canvas） - 带碰撞版本（速度减半）
+    // ============================================
+    const spoilerInstances = [];
+    let spoilerAnimId = null;
+    let spoilerLastTs = 0;
+
+    // 碰撞系统参数
+    const COLLISION_ENABLED = true; // 是否启用碰撞
+    const COLLISION_REPULSION = 0.75; // 排斥力强度（减半）
+    const COLLISION_RING_BG_MULTIPLIER = 1.2; // 环形对背景的碰撞半径乘数
+    ; const DRAG = 0.995 // 阻力系数（增加，让速度衰减更快）
+
+    // 工具函数
+    function hash(x, y) {
+        return (Math.sin(x * 127.1 + y * 311.7) * 43758.5453123) % 1;
+    }
+
+    function fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    function noise(x, y) {
+        const x0 = Math.floor(x);
+        const y0 = Math.floor(y);
+        const x1 = x0 + 1;
+        const y1 = y0 + 1;
+        const sx = fade(x - x0);
+        const sy = fade(y - y0);
+        const n00 = hash(x0, y0);
+        const n10 = hash(x1, y0);
+        const n01 = hash(x0, y1);
+        const n11 = hash(x1, y1);
+        const ix0 = lerp(n00, n10, sx);
+        const ix1 = lerp(n01, n11, sx);
+        return lerp(ix0, ix1, sy);
+    }
+
+    function flowField(x, y, t) {
+        const scale = 0.0045;
+        const n = noise(x * scale + t * 0.02, y * scale + t * 0.02);
+        const angle = n * Math.PI * 2.0;
+        return { vx: Math.cos(angle), vy: Math.sin(angle) };
+    }
+
+    // 碰撞检测工具函数
+    function distanceSquared(p1, p2) {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        return dx * dx + dy * dy;
+    }
+
+    function checkCollision(p1, p2, radius1, radius2) {
+        const distSq = distanceSquared(p1, p2);
+        const minDist = radius1 + radius2;
+        return distSq < (minDist * minDist);
+    }
+
+    function calculateRepulsion(p1, p2, radius1, radius2, strength = COLLISION_REPULSION) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const distSq = dx * dx + dy * dy;
+        const minDist = radius1 + radius2;
+
+        if (distSq === 0) return { fx: 0, fy: 0 };
+
+        if (distSq < minDist * minDist) {
+            const dist = Math.sqrt(distSq);
+            const overlap = minDist - dist;
+
+            // 排斥力：重叠越大，排斥力越强
+            const force = (overlap / minDist) * strength;
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            return {
+                fx: nx * force,
+                fy: ny * force
+            };
+        }
+
+        return { fx: 0, fy: 0 };
+    }
+
+    // 空间网格优化（提高碰撞检测性能）
+    class SpatialGrid {
+        constructor(cellSize = 50) {
+            this.cellSize = cellSize;
+            this.grid = new Map();
+        }
+
+        getCellKey(x, y) {
+            return `${Math.floor(x / this.cellSize)},${Math.floor(y / this.cellSize)}`;
+        }
+
+        addParticle(particle, type) {
+            const key = this.getCellKey(particle.x, particle.y);
+            if (!this.grid.has(key)) {
+                this.grid.set(key, []);
+            }
+            this.grid.get(key).push({ particle, type });
+        }
+
+        getNearbyParticles(x, y, radius) {
+            const results = [];
+            const startX = Math.floor((x - radius) / this.cellSize);
+            const endX = Math.floor((x + radius) / this.cellSize);
+            const startY = Math.floor((y - radius) / this.cellSize);
+            const endY = Math.floor((y + radius) / this.cellSize);
+
+            for (let i = startX; i <= endX; i++) {
+                for (let j = startY; j <= endY; j++) {
+                    const key = `${i},${j}`;
+                    if (this.grid.has(key)) {
+                        results.push(...this.grid.get(key));
+                    }
+                }
+            }
+            return results;
+        }
+
+        clear() {
+            this.grid.clear();
+        }
+    }
+
+    // 粒子系统核心
+    function createSpoilerInstance(canvas) {
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const inst = {
+            canvas,
+            ctx,
+            dpr,
+            W: 0,
+            H: 0,
+            particles: [],
+            bgParticles: [],
+            spatialGrid: new SpatialGrid(60) // 使用空间网格优化
+        };
+        return inst;
+    }
+
+    function resizeSpoilerInstance(inst) {
+        const rect = inst.canvas.getBoundingClientRect();
+        inst.W = Math.max(1, rect.width);
+        inst.H = Math.max(1, rect.height);
+        inst.canvas.width = Math.round(inst.W * inst.dpr);
+        inst.canvas.height = Math.round(inst.H * inst.dpr);
+        inst.ctx.setTransform(inst.dpr, 0, 0, inst.dpr, 0, 0);
+    }
+
+    function initSpoilerParticles(inst) {
+        // 根据配置决定是否初始化环形粒子
+        if (PARTICLES_CONFIG.showRings) {
+            // 环形粒子：10-30个，密度0.0006
+            const ringCount = Math.min(30, Math.max(10, Math.round(inst.W * inst.H * 0.0006)));
+            inst.particles = Array.from({ length: ringCount }).map(() => {
+                const life = 1.6 + Math.random() * 2.4;
+                const maxR = Math.max(35, Math.min(inst.W, inst.H) * (0.25 + Math.random() * 0.15));
+
+                // 给环形粒子添加初始速度（速度减半）
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.05 + Math.random() * 0.15; // 减半: 0.1+0.3 → 0.05+0.15
+
+                return {
+                    x: Math.random() * inst.W,
+                    y: Math.random() * inst.H,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    start: -Math.random() * life,
+                    life,
+                    maxR,
+                    thickness: 0.35 + Math.random() * 0.65,
+                    alpha: 0.12 + Math.random() * 0.28,
+                    mass: 2.0, // 质量用于碰撞计算
+                    lastCollisionTime: 0, // 记录上次碰撞时间
+                    collisionFlash: 0 // 碰撞闪光效果
+                };
+            });
+        } else {
+            // 不显示环形粒子，设为空数组
+            inst.particles = [];
+        }
+
+        // 根据配置决定是否初始化背景粒子
+        if (PARTICLES_CONFIG.showBg) {
+            // 背景粒子：2000-4000个，密度0.036
+            const bgCount = Math.min(2800, Math.max(1800, Math.round(inst.W * inst.H * 0.036)));
+            inst.bgParticles = Array.from({ length: bgCount }).map(() => {
+                // 背景粒子初始速度（速度减半）
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.1 + Math.random() * 0.3; // 减半: 0.2+0.6 → 0.1+0.3
+
+                return {
+                    x: Math.random() * inst.W,
+                    y: Math.random() * inst.H,
+                    vx: Math.cos(angle) * speed * 0.25, // 再减半: 0.5 → 0.25
+                    vy: Math.sin(angle) * speed * 0.25, // 再减半: 0.5 → 0.25
+                    r: 0.5 + Math.random() * 0.5, // 背景粒子大小
+                    o: 0.08 + Math.random() * 0.2,
+                    life: 1 + Math.random() * 2.5,
+                    age: Math.random() * 2.5,
+                    speed: speed,
+                    mass: 0.5, // 质量较小
+                    lastCollisionTime: 0,
+                    collisionFlash: 0
+                };
+            });
+        } else {
+            // 不显示背景粒子，设为空数组
+            inst.bgParticles = [];
+        }
+    }
+
+    function handleCollisions(inst, currentTime) {
+        if (!COLLISION_ENABLED || !PARTICLES_CONFIG.showRings) return;
+
+        inst.spatialGrid.clear();
+
+        // 将活跃的环形粒子加入网格
+        inst.particles.forEach(ring => {
+            const age = t - ring.start;
+            if (age >= 0 && age <= ring.life) {
+                inst.spatialGrid.addParticle(ring, 'ring');
+            }
+        });
+
+        // 检测背景粒子与环形粒子的碰撞
+        inst.bgParticles.forEach(bg => {
+            const nearby = inst.spatialGrid.getNearbyParticles(bg.x, bg.y, 100);
+
+            for (const item of nearby) {
+                if (item.type === 'ring') {
+                    const ring = item.particle;
+                    const ringAge = t - ring.start;
+                    if (ringAge < 0 || ringAge > ring.life) continue;
+
+                    // 当前环形半径
+                    const currentRingRadius = ring.maxR * (ringAge / ring.life);
+                    const collisionRadius = currentRingRadius * COLLISION_RING_BG_MULTIPLIER;
+
+                    // 检查碰撞
+                    if (checkCollision(bg, ring, bg.r, collisionRadius)) {
+                        // 计算排斥力
+                        const repulsion = calculateRepulsion(ring, bg, collisionRadius, bg.r);
+
+                        // 应用排斥力
+                        bg.vx += repulsion.fx;
+                        bg.vy += repulsion.fy;
+
+                        // 环形粒子受到反作用力（较小）
+                        ring.vx -= repulsion.fx * 0.1;
+                        ring.vy -= repulsion.fy * 0.1;
+
+                        // 记录碰撞时间，用于视觉反馈
+                        const now = currentTime || Date.now();
+                        ring.lastCollisionTime = now;
+                        ring.collisionFlash = 0.3; // 闪光强度
+                        bg.lastCollisionTime = now;
+                        bg.collisionFlash = 0.2;
+                    }
+                }
+            }
+        });
+    }
+
+    function updateParticlesMotion(inst, t, dt) {
+        // 更新背景粒子
+        for (const p of inst.bgParticles) {
+            p.age += dt;
+
+            // 粒子重生
+            if (p.age > p.life) {
+                p.x = Math.random() * inst.W;
+                p.y = Math.random() * inst.H;
+                p.life = 1 + Math.random() * 2.5;
+                p.age = 0;
+                p.r = 0.5 + Math.random() * 0.5; //重生背景粒子大小
+                p.o = 0.22 + Math.random() * 0.4;
+
+                // 重生时重置速度（速度减半）
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.1 + Math.random() * 0.3; // 减半
+                p.vx = Math.cos(angle) * speed * 0.25; // 再减半
+                p.vy = Math.sin(angle) * speed * 0.25; // 再减半
+                p.speed = speed;
+
+                p.collisionFlash = 0;
+                continue;
+            }
+
+            // 流场影响（强度减半）
+            const flow = flowField(p.x, p.y, t);
+            const flowStrength = 0.2; // 减半: 0.8 → 0.4
+
+            p.vx += flow.vx * flowStrength * dt * 10; // 速度乘数减半: 60 → 30
+            p.vy += flow.vy * flowStrength * dt * 10; // 速度乘数减半: 60 → 30
+
+            // 速度衰减
+            p.vx *= DRAG;
+            p.vy *= DRAG;
+
+            // 更新位置（速度乘数减半）
+            p.x += p.vx * dt * 10; // 减半: 60 → 30
+            p.y += p.vy * dt * 10; // 减半: 60 → 30
+
+            // 边界处理（循环）
+            if (p.x < 0) p.x += inst.W;
+            if (p.x > inst.W) p.x -= inst.W;
+            if (p.y < 0) p.y += inst.H;
+            if (p.y > inst.H) p.y -= inst.H;
+
+            // 碰撞闪光效果衰减
+            if (p.collisionFlash > 0) {
+                p.collisionFlash = Math.max(0, p.collisionFlash - dt * 2);
+            }
+        }
+
+        // 更新环形粒子（如果启用）
+        for (const r of inst.particles) {
+            let age = t - r.start;
+
+            if (age < 0) continue;
+
+            // 环形粒子重生
+            if (age > r.life) {
+                r.start = t + Math.random() * 0.6;
+                r.x = Math.random() * inst.W;
+                r.y = Math.random() * inst.H;
+                r.life = 1.6 + Math.random() * 2.4;
+                r.maxR = Math.max(35, Math.min(inst.W, inst.H) * (0.25 + Math.random() * 0.15));
+                r.thickness = 0.35 + Math.random() * 0.65;
+                r.alpha = 0.28 + Math.random() * 0.45;
+
+                // 重生时重置速度（速度减半）
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.05 + Math.random() * 0.15; // 减半
+                r.vx = Math.cos(angle) * speed;
+                r.vy = Math.sin(angle) * speed;
+
+                r.collisionFlash = 0;
+                continue;
+            }
+
+            // 环形粒子受流场影响（强度减半）
+            const flow = flowField(r.x, r.y, t);
+            const flowStrength = 0.125; // 减半: 0.5 → 0.25
+
+            r.vx += flow.vx * flowStrength * dt * 10; // 速度乘数减半: 60 → 30
+            r.vy += flow.vy * flowStrength * dt * 10; // 速度乘数减半: 60 → 30
+
+            // 速度衰减
+            r.vx *= DRAG;
+            r.vy *= DRAG;
+
+            // 更新位置（速度乘数减半）
+            r.x += r.vx * dt * 10; // 减半: 60 → 30
+            r.y += r.vy * dt * 10; // 减半: 60 → 30
+
+            // 环形粒子边界反弹
+            const bounceDamping = 0.9;
+            if (r.x < 0) {
+                r.x = 0;
+                r.vx = Math.abs(r.vx) * bounceDamping;
+            }
+            if (r.x > inst.W) {
+                r.x = inst.W;
+                r.vx = -Math.abs(r.vx) * bounceDamping;
+            }
+            if (r.y < 0) {
+                r.y = 0;
+                r.vy = Math.abs(r.vy) * bounceDamping;
+            }
+            if (r.y > inst.H) {
+                r.y = inst.H;
+                r.vy = -Math.abs(r.vy) * bounceDamping;
+            }
+
+            // 碰撞闪光效果衰减
+            if (r.collisionFlash > 0) {
+                r.collisionFlash = Math.max(0, r.collisionFlash - dt * 3);
+            }
+        }
+
+        // 处理碰撞
+        if (COLLISION_ENABLED && PARTICLES_CONFIG.showRings) {
+            handleCollisions(inst, Date.now());
+        }
+    }
+
+    function renderSpoilerInstance(inst, t, dt) {
+        const ctx = inst.ctx;
+        ctx.clearRect(0, 0, inst.W, inst.H);
+
+        // 更新粒子运动（包括碰撞）
+        updateParticlesMotion(inst, t, dt);
+
+        // 绘制背景粒子（如果启用）
+        if (PARTICLES_CONFIG.showBg) {
+            for (const p of inst.bgParticles) {
+                // 绘制粒子，带碰撞闪光效果
+                const flashFactor = 1 + p.collisionFlash;
+                const baseAlpha = p.o * (1 - p.age / p.life);
+                const flashAlpha = Math.min(0.8, baseAlpha * flashFactor);
+
+                ctx.globalAlpha = flashAlpha;
+                ctx.fillStyle = 'rgba(255,255,255,0.98)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // 绘制环形粒子（如果启用）
+        if (PARTICLES_CONFIG.showRings) {
+            for (const r of inst.particles) {
+                let age = t - r.start;
+                if (age < 0 || age > r.life) continue;
+
+                const p = age / r.life;
+                const radius = r.maxR * p;
+                const fadeFactor = 1 - p;
+                const dotCount = Math.max(64, Math.floor(radius * 1.8)); // 增加点数使环更平滑
+
+                // 环形碰撞闪光效果
+                const ringFlashFactor = 1 + r.collisionFlash * 0.5;
+
+                for (let i = 0; i < dotCount; i++) {
+                    const a = (i / dotCount) * Math.PI * 2;
+                    const x = r.x + Math.cos(a) * radius;
+                    const y = r.y + Math.sin(a) * radius;
+
+                    // 环形粒子大小
+                    const size = 0.4 + Math.random() * 0.8;
+                    const baseAlpha = r.alpha * fadeFactor * (0.6 + Math.random() * 0.4);
+                    const flashAlpha = Math.min(0.9, baseAlpha * ringFlashFactor);
+
+                    ctx.globalAlpha = flashAlpha;
+                    ctx.fillStyle = 'rgba(255,255,255,0.98)';
+                    ctx.beginPath();
+                    ctx.arc(x, y, Math.max(0.25, size), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 绘制环形中心点（可选，增强视觉效果）
+                if (radius > 10) {
+                    ctx.globalAlpha = r.alpha * fadeFactor * 0.3;
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+    }
+
+    function initSpoilerCanvases() {
+        spoilerInstances.length = 0;
+        const canvases = document.querySelectorAll('.resource-thumb-mask .spoiler-canvas');
+        canvases.forEach((canvas) => {
+            const inst = createSpoilerInstance(canvas);
+            resizeSpoilerInstance(inst);
+            initSpoilerParticles(inst);
+            spoilerInstances.push(inst);
+        });
+    }
+
+    function startSpoilerAnimation() {
+        if (spoilerAnimId) return;
+        const tick = (ts) => {
+            t = ts / 1000; // 更新全局时间
+            const dt = Math.min(0.033, (ts - spoilerLastTs) / 1000 || 0.016);
+            spoilerLastTs = ts;
+            spoilerInstances.forEach((inst) => renderSpoilerInstance(inst, t, dt));
+            spoilerAnimId = requestAnimationFrame(tick);
+        };
+        spoilerAnimId = requestAnimationFrame(tick);
+    }
+
+    function stopSpoilerAnimation() {
+        if (!spoilerAnimId) return;
+        cancelAnimationFrame(spoilerAnimId);
+        spoilerAnimId = null;
+        spoilerLastTs = 0;
+    }
+
+    // 安全模式管理
+    async function initSafeMode() {
+        try {
+            const response = await fetch('/api/config/values');
+            if (!response.ok) {
+                console.warn('无法获取配置，使用默认安全模式设置');
+                return;
+            }
+            const config = await response.json();
+
+            // 应用安全模式
+            applySafeMode(!!config.SAFE_MODE);
+
+        } catch (e) {
+            console.error('安全模式初始化失败:', e);
+        }
+    }
+
+    // 应用安全模式到 DOM
+    function applySafeMode(safeMode) {
+        if (safeMode) {
+            document.body.classList.add('safe-mode');
+            initSpoilerCanvases();
+            startSpoilerAnimation();
+        } else {
+            document.body.classList.remove('safe-mode');
+            stopSpoilerAnimation();
+        }
+        console.log('安全模式已应用:', safeMode ? '开启' : '关闭');
+    }
+
+    // 跨标签页通信 - 监听其他标签页的安全模式变更
+    function initSafeModeBroadcast() {
+        try {
+            const channel = new BroadcastChannel('safe_mode_channel');
+            channel.onmessage = function (event) {
+                if (event.data && event.data.type === 'SAFE_MODE_CHANGED') {
+                    console.log('收到安全模式变更通知:', event.data.safeMode ? '开启' : '关闭');
+                    applySafeMode(event.data.safeMode);
+                }
+            };
+        } catch (e) {
+            console.warn('BroadcastChannel 不支持，跨标签页实时同步不可用:', e);
+        }
+    }
+
+    // 页面加载时初始化安全模式
+    window.addEventListener('resize', () => {
+        if (document.body.classList.contains('safe-mode')) {
+            initSpoilerCanvases();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initSafeMode();
+        initSafeModeBroadcast();
+    });
+
+</script>
+{% endblock %}

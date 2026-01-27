@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>剧透遮罩测试</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b0e14;
+      color: #e6e9ef;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .panel {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .panel input[type="text"] {
+      width: min(520px, 100%);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #2a2f3a;
+      background: #121722;
+      color: #e6e9ef;
+    }
+    .panel button {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #2a2f3a;
+      background: #1c2230;
+      color: #e6e9ef;
+      cursor: pointer;
+    }
+    .stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 400 / 269;
+      border-radius: 16px;
+      overflow: hidden;
+      background: radial-gradient(circle at 20% 20%, #566, #223 60%, #111 100%);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    }
+    .stage img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(24px) saturate(120%);
+      transform: scale(1.04);
+    }
+    #particleCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .hint {
+      color: #9aa3b2;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <input id="imgUrl" type="text" placeholder="输入图片 URL（可选）" />
+      <button id="applyBtn">应用图片</button>
+      <input id="fileInput" type="file" accept="image/*" />
+    </div>
+    <div class="stage">
+      <img id="bgImg" alt="预览图" />
+      <canvas id="particleCanvas"></canvas>
+    </div>
+    <div class="hint">说明：底层为强模糊图片，上层为噪点粒子层（Perlin 风格流场）。用于验证 Telegram 类似动效。</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    const img = document.getElementById('bgImg');
+    const imgUrl = document.getElementById('imgUrl');
+    const fileInput = document.getElementById('fileInput');
+
+    const DPR = window.devicePixelRatio || 1;
+    let W = 0, H = 0;
+
+    const particles = [];
+    const PARTICLE_COUNT = 2200;
+    const SPEED = 0.45;
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      W = Math.max(1, rect.width);
+      H = Math.max(1, rect.height);
+      canvas.width = Math.round(W * DPR);
+      canvas.height = Math.round(H * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+
+    function hash(x, y) {
+      return Math.sin(x * 127.1 + y * 311.7) * 43758.5453123 % 1;
+    }
+
+    function fade(t) {
+      return t * t * t * (t * (t * 6 - 15) + 10);
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function noise(x, y) {
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const x1 = x0 + 1;
+      const y1 = y0 + 1;
+      const sx = fade(x - x0);
+      const sy = fade(y - y0);
+      const n00 = hash(x0, y0);
+      const n10 = hash(x1, y0);
+      const n01 = hash(x0, y1);
+      const n11 = hash(x1, y1);
+      const ix0 = lerp(n00, n10, sx);
+      const ix1 = lerp(n01, n11, sx);
+      return lerp(ix0, ix1, sy);
+    }
+
+    function flowField(x, y, t) {
+      const scale = 0.0045;
+      const n = noise(x * scale + t * 0.02, y * scale + t * 0.02);
+      const angle = n * Math.PI * 2.0;
+      return { vx: Math.cos(angle), vy: Math.sin(angle) };
+    }
+
+    function initParticles() {
+      particles.length = 0;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: 0.7 + Math.random() * 1.6,
+          o: 0.15 + Math.random() * 0.45,
+        });
+      }
+    }
+
+    let last = 0;
+    function tick(ts) {
+      if (!W || !H) return requestAnimationFrame(tick);
+      const t = ts / 1000;
+      const dt = Math.min(0.033, (ts - last) / 1000 || 0.016);
+      last = ts;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      for (const p of particles) {
+        const v = flowField(p.x, p.y, t);
+        p.x += v.vx * SPEED * 60 * dt;
+        p.y += v.vy * SPEED * 60 * dt;
+        if (p.x < 0) p.x += W;
+        if (p.x > W) p.x -= W;
+        if (p.y < 0) p.y += H;
+        if (p.y > H) p.y -= H;
+        ctx.globalAlpha = p.o;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function setImage(src) {
+      img.src = src;
+      img.style.display = 'block';
+    }
+
+    document.getElementById('applyBtn').addEventListener('click', () => {
+      const url = imgUrl.value.trim();
+      if (url) setImage(url);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => setImage(reader.result);
+      reader.readAsDataURL(file);
+    });
+
+    window.addEventListener('resize', () => {
+      resize();
+      initParticles();
+    });
+
+    resize();
+    initParticles();
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

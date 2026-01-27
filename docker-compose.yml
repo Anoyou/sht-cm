@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: sht_web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      # --- 核心配置 ---
+      - FLASK_APP=/app/app.py
+      - FLASK_ENV=production
+      - DATABASE_URL=sqlite:////app/data/sht.db
+      - SECRET_KEY=${SECRET_KEY}
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+      - TZ_OFFSET_HOURS=${TZ_OFFSET_HOURS:-8}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONPATH=/app
+
+      # --- 服务开关 & 账户配置 ---
+      - TG_BOT_TOKEN=${TG_BOT_TOKEN}
+      - TG_NOTIFY_CHAT_ID=${TG_NOTIFY_CHAT_ID}
+      - MONITORING_ENABLED=${MONITORING_ENABLED:-true}
+
+      # --- 网络属性 ---
+      - PROXY=${PROXY}
+      - BYPASS_URL=${BYPASS_URL}
+      - FLARE_SOLVERR_URL=${FLARE_SOLVERR_URL}
+      - WEB_BASE_URL=${WEB_BASE_URL:-http://localhost:5000}
+
+      # --- 基础设施 ---
+      - REDIS_URL=redis://redis:6379/0
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: sht_redis
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:

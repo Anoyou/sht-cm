@@ -1,0 +1,346 @@
+/* 日志页面特定样式 */
+.log-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: var(--border-radius-xl);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.log-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* 日志卡片头部 */
+.log-card-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(var(--foreground-rgb), 0.03);
+}
+
+@media (max-width: 768px) {
+    .log-card-header {
+        padding: 1rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* 工具栏 */
+.toolbar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .toolbar .search-wrapper {
+        flex: none;
+        width: 100%;
+        order: 1;
+    }
+
+    .toolbar .log-level-filter {
+        order: 2;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .toolbar .btn-group {
+        order: 3;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+/* 搜索包装器 */
+.search-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-wrapper::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--muted-foreground);
+    pointer-events: none;
+}
+
+.search-wrapper input {
+    width: 100%;
+    height: 2.5rem;
+    padding: 0 2.75rem 0 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    transition: var(--transition-colors);
+}
+
+.search-wrapper input:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 2px rgba(2, 8, 23, 0.1);
+}
+
+.search-wrapper .log-filter-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    border-radius: var(--border-radius);
+    border: 1px solid transparent;
+    background: var(--card);
+    color: var(--muted-foreground);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.search-wrapper .log-filter-btn:hover {
+    border-color: var(--border);
+    color: var(--foreground);
+    box-shadow: var(--shadow-sm);
+}
+
+.search-wrapper .log-filter-btn:active {
+    transform: translateY(-50%) scale(0.96);
+}
+
+.search-wrapper .log-filter-btn:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px rgba(2, 8, 23, 0.1);
+}
+
+@media (max-width: 768px) {
+    .search-wrapper {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+/* 日志级别过滤器 */
+.log-level-filter {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.log-level-filter label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--foreground);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    border: 1px solid var(--border);
+    background: var(--background);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.log-level-filter label:hover {
+    background: var(--accent);
+    border-color: var(--accent-foreground);
+    color: var(--accent-foreground);
+}
+
+.log-level-filter label:has(input:checked) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
+}
+
+.log-level-filter input[type="checkbox"] {
+    margin: 0;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .log-level-filter {
+        gap: 0.375rem;
+        padding: 0.25rem 0;
+    }
+
+    .log-level-filter label {
+        padding: 0.1875rem 0.5rem;
+        font-size: 0.6875rem;
+        min-width: auto;
+        flex: 0 0 auto;
+    }
+
+    .log-level-filter input[type="checkbox"] {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* 按钮组 */
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .btn-group .btn {
+        flex-shrink: 0;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* 日志内容 */
+.log-content {
+    padding: 0;
+}
+
+/* 日志统计信息 */
+.log-stats {
+    background: rgba(var(--foreground-rgb), 0.02);
+    color: var(--foreground);
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--glass-border);
+    font-size: 0.75rem;
+    font-family: inherit;
+    text-align: center;
+    font-weight: 500;
+}
+
+/* 日志显示区域 */
+.logs-display {
+    height: 70vh;
+    overflow: auto;
+    background: transparent;
+    /* 移除额外的深色遮罩，保持清透 */
+    color: var(--foreground);
+    /* 使用标准文字颜色 */
+    padding: 1.25rem;
+    border-radius: 0 0 var(--border-radius-xl) var(--border-radius-xl);
+    font-size: 0.8125rem;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+    line-height: 1.6;
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    position: relative;
+    border-left: 4px solid var(--blue-500);
+}
+
+/* 日志等级颜色 */
+/* 日志等级颜色 */
+.logs-display .log-debug {
+    color: var(--blue-500);
+    /* background: rgba(100, 181, 246, 0.1); 移除背景色 */
+    padding: 2px 0;
+}
+
+.logs-display .log-info {
+    color: var(--emerald-500);
+    /* background: rgba(129, 199, 132, 0.1); 移除背景色 */
+    padding: 2px 0;
+}
+
+.logs-display .log-warning {
+    color: var(--amber-500);
+    /* background: rgba(255, 183, 77, 0.1); 移除背景色 */
+    padding: 2px 0;
+}
+
+.logs-display .log-error {
+    color: var(--destructive);
+    background: rgba(239, 68, 68, 0.1);
+    /* 仅保留Error的微弱背景提示 */
+    padding: 2px 4px;
+    font-weight: 500;
+    border-radius: 4px;
+}
+
+.logs-display .log-critical {
+    color: var(--rose-500);
+    background: rgba(244, 63, 94, 0.15);
+    padding: 2px 4px;
+    font-weight: 600;
+    border-left: 3px solid var(--rose-500);
+    padding-left: 8px;
+    border-radius: 0 4px 4px 0;
+}
+
+/* 日志时间戳样式 */
+.logs-display .log-timestamp {
+    color: #9e9e9e;
+    font-size: 0.6875rem;
+}
+
+/* 日志模块名样式 */
+.logs-display .log-module {
+    color: #b39ddb;
+    font-weight: 500;
+}
+
+/* 日志搜索高亮 */
+.logs-display .highlight {
+    background: rgba(255, 235, 59, 0.3);
+    color: #333;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* 日志滚动条样式 */
+.logs-display::-webkit-scrollbar {
+    width: 12px;
+}
+
+.logs-display::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.logs-display::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.6), rgba(139, 92, 246, 0.6));
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.logs-display::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(139, 92, 246, 0.8));
+    background-clip: content-box;
+}
