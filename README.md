@@ -36,17 +36,29 @@
 
 ### 方式一：Docker 部署（推荐）
 
-#### 最简部署
+#### 最简部署（使用 Docker Hub 镜像）
+```bash
+# 1. 创建目录
+mkdir sht-cm && cd sht-cm
+
+# 2. 下载 compose 文件
+curl -O https://raw.githubusercontent.com/Anoyou/sht-cm/main/docker-compose.yml
+
+# 3. 启动（无需构建，直接拉取镜像）
+docker-compose up -d
+
+# 4. 访问 Web 界面配置
+open http://localhost:5000/config
+```
+
+### 本地构建部署
 ```bash
 # 1. 克隆项目
 git clone https://github.com/Anoyou/sht-cm.git
 cd sht-cm
 
-# 2. 使用精简版 compose 启动
-docker-compose -f docker-compose.min.yml up -d
-
-# 3. 访问 Web 界面配置
-open http://localhost:5000/config
+# 2. 构建并启动（修改 compose 中的 image 为 build: .）
+docker-compose up -d --build
 ```
 
 #### 完整配置部署

@@ -6,7 +6,7 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    image: anoyou/sht-cm:latest
     container_name: sht_web
     ports:
       - "5000:5000"
