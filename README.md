@@ -1,4 +1,4 @@
-# SHT 资源爬取管理平台
+# SHT 资源爬取管理平台 ｜ SHT Crawler & Management
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-2.x-green.svg)](https://flask.palletsprojects.com/)
@@ -15,7 +15,7 @@
 - **增量爬取**：自动识别已爬取内容，避免重复
 - **定时任务**：支持每日自动爬取
 
-### 🌐 Web 管理界面
+### 🌐 Web 管理界面 特别是移动端和支持 PWA 模式，可类似 App 般使用～强烈建议体验！
 - **资源浏览**：支持分类筛选、搜索、分页
 - **爬虫控制**：可视化爬虫启停、进度监控
 - **系统配置**：所有配置项可通过 Web 界面修改
@@ -112,10 +112,10 @@ sht-cm/
 ├── task_manager.py         # 任务管理器
 ├── sht_crawler.py          # 爬虫核心
 ├── requirements.txt        # 依赖列表
-├── docker-compose.yml      # Docker 配置
-├── docker-compose.min.yml  # 精简 Docker 配置
-├── docker-compose.full.yml # 完整 Docker 配置
+├── docker-compose.yml      # Docker 配置（精简版）
+├── docker-compose.full.yml # Docker 配置（完整版）
 ├── Dockerfile              # Docker 构建文件
+├── README.md               # 项目文档
 ├── blueprints/             # Flask 蓝图（API 路由）
 ├── crawler/                # 爬虫实现
 ├── crawler_control/        # 爬虫控制器
