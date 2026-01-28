@@ -27,11 +27,8 @@ jobs:
         with:
           images: anoyou/sht-cm
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=,suffix=,format=short
-            latest
+            type=raw,value=latest
 
       - name: Build and push
         uses: docker/build-push-action@v5
