@@ -106,24 +106,32 @@ open http://localhost:5000
 sht-cm/
 ├── app.py                  # Flask 应用入口
 ├── start.py                # 统一启动脚本
-├── configuration.py        # 配置管理器
-├── models.py               # 数据模型
+├── configuration.py        # 统一配置管理器
+├── models.py               # SQLAlchemy 数据模型
 ├── bot.py                  # Telegram Bot
 ├── task_manager.py         # 任务管理器
 ├── sht_crawler.py          # 爬虫核心
-├── requirements.txt        # 依赖列表
+├── sht2bm_adapter.py       # SHT2BM API 适配器
+├── cache_manager.py        # 缓存管理器
+├── health.py               # 健康检查
+├── maintenance_tools.py    # 数据库维护工具
+├── constants.py            # 全局常量
+├── requirements.txt        # Python 依赖列表
 ├── docker-compose.yml      # Docker 配置（精简版）
 ├── docker-compose.full.yml # Docker 配置（完整版）
-├── Dockerfile              # Docker 构建文件
+├── Dockerfile              # Docker 镜像构建
+├── docker-entrypoint.sh    # Docker 入口脚本
 ├── README.md               # 项目文档
+├── .env                    # 环境变量（可选）
 ├── blueprints/             # Flask 蓝图（API 路由）
 ├── crawler/                # 爬虫实现
 ├── crawler_control/        # 爬虫控制器
-├── scheduler/              # 定时任务
-├── services/               # 业务服务
-├── static/                 # 静态资源
+├── scheduler/              # 定时任务调度
+├── services/               # 业务服务层
+├── static/                 # 静态资源（CSS/JS/图片）
 ├── templates/              # HTML 模板
-└── utils/                  # 工具函数
+├── utils/                  # 工具函数
+└── data/                   # 数据目录（数据库、日志、配置）
 ```
 
 ## 🛠️ 技术栈
