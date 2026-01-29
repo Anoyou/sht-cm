@@ -662,22 +662,41 @@
                 AUTO_CRAWL_TIME: document.getElementById('cfg-auto-crawl-time').value || '03:00'
             };
 
+            // 添加请求超时控制（30秒）
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
             const response = await fetch('/api/config/set', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(configData)
+                body: JSON.stringify(configData),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
-            if (response.ok) {
-                showToast('配置保存成功', 'success');
+            // 解析响应数据
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                result = { success: false, message: '无法解析服务器响应' };
+            }
+
+            if (response.ok && result.success) {
+                showToast(result.message || '配置保存成功', 'success');
                 // 【修复】更新所有状态badge
                 updateAllStatusBadges();
             } else {
-                throw new Error('Save failed');
+                const errorMsg = result.message || result.details || `HTTP ${response.status}`;
+                throw new Error(errorMsg);
             }
         } catch (error) {
             console.error('保存配置失败:', error);
-            showToast('保存配置失败: ' + error.message, 'error');
+            if (error.name === 'AbortError') {
+                showToast('保存超时，请检查网络连接或服务器状态', 'error');
+            } else {
+                showToast('保存配置失败: ' + error.message, 'error');
+            }
         } finally {
             saveBtn.disabled = false;
             saveBtn.textContent = '保存配置';

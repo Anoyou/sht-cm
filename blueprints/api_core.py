@@ -243,13 +243,22 @@ def api_config_set():
         # 如果修改了定时爬取配置，立即更新任务管理器
         if 'AUTO_CRAWL_ENABLED' in data or 'AUTO_CRAWL_TIME' in data:
             try:
-                # 任务管理器已停用，仅记录日志
-                auto_enabled = config_manager.get('AUTO_CRAWL_ENABLED', False)
-                auto_time = config_manager.get('AUTO_CRAWL_TIME', '03:00')
+                from task_manager import task_manager
+                auto_enabled = config_updates.get('AUTO_CRAWL_ENABLED', False)
+                auto_time = config_updates.get('AUTO_CRAWL_TIME', '03:00')
+
+                # 动态更新任务管理器中的定时任务
+                task_manager.update_task_schedule(
+                    'daily_crawl',
+                    new_time=auto_time,
+                    enabled=auto_enabled
+                )
+
                 logger.info(f"✓ [CONFIG] 每日定时爬取配置已更新: {'开启' if auto_enabled else '关闭'} @ {auto_time}")
-                logger.info(f"💡 [CONFIG] 注意: 任务管理器已停用，定时爬取功能需要通过其他方式实现")
+                logger.info(f"✓ [CONFIG] 定时任务已动态更新，无需重启服务")
             except Exception as te:
                 logger.error(f"✗ [CONFIG] 更新定时任务配置失败: {te}")
+                logger.warning(f"💡 [CONFIG] 配置已保存，但任务调度未更新，重启服务后生效")
 
         log_api_call(
             logger,

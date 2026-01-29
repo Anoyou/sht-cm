@@ -666,7 +666,8 @@
                 counts.paused++;
             } else if (task.status === 'running') {
                 counts.running++;
-            } else if (task.status === 'stopped') {
+            } else if (task.status === 'stopped' || task.status === 'waiting') {
+                // waiting 状态也算作已停止/等待中
                 counts.stopped++;
             } else if (task.status === 'error') {
                 counts.error++;
@@ -696,6 +697,7 @@
             'running': 'status-running',
             'paused': 'status-paused',
             'stopped': 'status-stopped',
+            'waiting': 'status-stopped',
             'error': 'status-error'
         };
         return classes[status] || 'status-stopped';
@@ -707,9 +709,10 @@
             'running': '运行中',
             'paused': '已暂停',
             'stopped': '已停止',
+            'waiting': '等待中',
             'error': '异常'
         };
-        return texts[status] || '未知';
+        return texts[status] || status || '未知';
     }
 
     // 格式化日期时间

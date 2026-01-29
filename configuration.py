@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional, List
 from urllib.parse import urlparse
 
 # 全局版本号
-__version__ = "1.5.5"
+__version__ = "1.5.6"
 
 # 配置日志
 logger = logging.getLogger(__name__)
