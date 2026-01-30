@@ -503,10 +503,21 @@ body.safe-mode .resource-thumb-mask {
     z-index: 9999;
     cursor: pointer;
     animation: fadeIn 0.2s ease;
+    overflow: hidden;
+    touch-action: none; /* 防止默认触摸行为 */
 }
 
 .lightbox.active {
     display: flex;
+}
+
+.lightbox-image-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
 }
 
 .lightbox-image {
@@ -516,6 +527,71 @@ body.safe-mode .resource-thumb-mask {
     border-radius: var(--border-radius-xl);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     animation: zoomIn 0.3s ease;
+    user-select: none;
+    -webkit-user-drag: none;
+    will-change: transform;
+}
+
+/* 关闭按钮 */
+.lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    z-index: 10000;
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+    .lightbox-close {
+        width: 40px;
+        height: 40px;
+        font-size: 1.25rem;
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+}
+
+/* 缩放提示 */
+.lightbox-zoom-hint {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lightbox-zoom-hint.show {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .lightbox-zoom-hint {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+        bottom: 1rem;
+    }
 }
 
 @keyframes fadeIn {
