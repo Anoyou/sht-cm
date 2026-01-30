@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main ]
+    # 只在推送版本标签时触发构建
     tags: [ 'v*' ]
 
 jobs:
@@ -27,7 +27,9 @@ jobs:
         with:
           images: anoyou/sht-cm
           tags: |
+            # 使用语义化版本号（如 1.5.7）
             type=semver,pattern={{version}}
+            # 始终将 latest 指向最新的版本标签
             type=raw,value=latest
 
       - name: Build and push
