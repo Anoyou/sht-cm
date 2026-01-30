@@ -130,7 +130,11 @@
 
 <!-- 大图查看器 -->
 <div id="lightbox" class="lightbox">
-    <img id="lightboxImage" class="lightbox-image" src="" alt="大图预览">
+    <button id="lightboxClose" class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div id="lightboxContainer" class="lightbox-image-container">
+        <img id="lightboxImage" class="lightbox-image" src="" alt="大图预览" draggable="false">
+    </div>
+    <div id="zoomHint" class="lightbox-zoom-hint">滚轮缩放 / 双击重置</div>
 </div>
 {% endblock %}
 
@@ -887,23 +891,307 @@
         }
     }
 
-    // 大图查看器功能
+    // 大图查看器功能 - 支持缩放和拖拽
+    let lightboxState = {
+        scale: 1,
+        translateX: 0,
+        translateY: 0,
+        isDragging: false,
+        lastX: 0,
+        lastY: 0,
+        initialDistance: 0,
+        initialScale: 1,
+        // 缩放中心点
+        centerX: 0,
+        centerY: 0,
+        // 双击检测用
+        lastTapTime: 0,
+        lastTapX: 0,
+        lastTapY: 0
+    };
+
     function openLightbox(imgSrc) {
         if (!imgSrc) return;
 
         const lightbox = document.getElementById('lightbox');
         const lightboxImage = document.getElementById('lightboxImage');
+        const container = document.getElementById('lightboxContainer');
+
+        // 重置状态
+        resetLightboxState();
 
         lightboxImage.src = imgSrc;
         lightbox.classList.add('active');
 
-        // 点击lightbox关闭
-        lightbox.onclick = closeLightbox;
+        // 显示提示
+        showZoomHint();
+
+        // 绑定事件
+        bindLightboxEvents();
     }
 
     function closeLightbox() {
         const lightbox = document.getElementById('lightbox');
         lightbox.classList.remove('active');
+        unbindLightboxEvents();
+        resetLightboxState();
+    }
+
+    function resetLightboxState() {
+        lightboxState.scale = 1;
+        lightboxState.translateX = 0;
+        lightboxState.translateY = 0;
+        lightboxState.isDragging = false;
+        lightboxState.initialDistance = 0;
+        lightboxState.initialScale = 1;
+        lightboxState.lastTapTime = 0;
+        updateImageTransform();
+    }
+
+    function updateImageTransform() {
+        const lightboxImage = document.getElementById('lightboxImage');
+        if (lightboxImage) {
+            lightboxImage.style.transform = `translate(${lightboxState.translateX}px, ${lightboxState.translateY}px) scale(${lightboxState.scale})`;
+        }
+    }
+
+    function showZoomHint() {
+        const hint = document.getElementById('zoomHint');
+        if (!hint) return;
+
+        const isMobile = window.innerWidth <= 768;
+        hint.textContent = isMobile ? '双指缩放 / 双击重置' : '滚轮缩放 / 拖拽移动 / 双击重置';
+        hint.classList.add('show');
+
+        setTimeout(() => {
+            hint.classList.remove('show');
+        }, 3000);
+    }
+
+    function bindLightboxEvents() {
+        const lightbox = document.getElementById('lightbox');
+        const container = document.getElementById('lightboxContainer');
+        const image = document.getElementById('lightboxImage');
+
+        if (!lightbox || !container || !image) return;
+
+        // 阻止默认滚轮行为（在 lightbox 内）
+        lightbox.addEventListener('wheel', handleWheel, { passive: false });
+
+        // 双击重置
+        container.addEventListener('dblclick', handleDoubleClick);
+
+        // 拖拽图片（仅桌面端）
+        container.addEventListener('mousedown', handleDragStart);
+
+        // 触摸事件（移动端双指缩放+单指拖拽）
+        container.addEventListener('touchstart', handleTouchStart, { passive: false });
+        container.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+        // 全局鼠标事件（拖拽中）
+        document.addEventListener('mousemove', handleDragMove);
+        document.addEventListener('mouseup', handleDragEnd);
+
+        // 点击背景关闭
+        lightbox.addEventListener('click', handleLightboxClick);
+    }
+
+    function unbindLightboxEvents() {
+        const lightbox = document.getElementById('lightbox');
+        const container = document.getElementById('lightboxContainer');
+
+        if (lightbox) {
+            lightbox.removeEventListener('wheel', handleWheel);
+            lightbox.removeEventListener('click', handleLightboxClick);
+        }
+        if (container) {
+            container.removeEventListener('dblclick', handleDoubleClick);
+            container.removeEventListener('mousedown', handleDragStart);
+            container.removeEventListener('touchstart', handleTouchStart);
+            container.removeEventListener('touchmove', handleTouchMove);
+        }
+
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+    }
+
+    // 鼠标滚轮缩放（以鼠标位置为中心）
+    function handleWheel(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const lightbox = document.getElementById('lightbox');
+        const rect = lightbox.getBoundingClientRect();
+
+        // 鼠标相对于容器中心的偏移
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const oldScale = lightboxState.scale;
+        const newScale = Math.min(Math.max(oldScale * delta, 0.5), 5);
+
+        // 计算新的偏移，保持鼠标指向的点不动
+        const scaleRatio = newScale / oldScale;
+        lightboxState.translateX = mouseX - (mouseX - lightboxState.translateX) * scaleRatio;
+        lightboxState.translateY = mouseY - (mouseY - lightboxState.translateY) * scaleRatio;
+        lightboxState.scale = newScale;
+
+        updateImageTransform();
+    }
+
+    // 双击重置
+    function handleDoubleClick(e) {
+        e.stopPropagation();
+        resetLightboxState();
+    }
+
+    // 点击 lightbox 背景关闭
+    function handleLightboxClick(e) {
+        // 如果点击的是图片或关闭按钮，不关闭
+        if (e.target.closest('#lightboxImage') ||
+            e.target.closest('#lightboxClose')) {
+            return;
+        }
+        // 点击 lightbox 背景或容器空白区域时关闭
+        closeLightbox();
+    }
+
+    // 拖拽开始（仅桌面端）
+    function handleDragStart(e) {
+        // 只有左键可以拖拽
+        if (e.button !== 0) return;
+
+        // 只有点击图片本身时才允许拖拽
+        if (e.target.id !== 'lightboxImage') return;
+
+        e.preventDefault();
+        e.stopPropagation(); // 阻止事件冒泡到 lightbox，避免触发关闭
+
+        lightboxState.isDragging = true;
+        lightboxState.lastX = e.clientX;
+        lightboxState.lastY = e.clientY;
+    }
+
+    // 拖拽移动（桌面端）
+    function handleDragMove(e) {
+        if (!lightboxState.isDragging) return;
+
+        const deltaX = e.clientX - lightboxState.lastX;
+        const deltaY = e.clientY - lightboxState.lastY;
+
+        lightboxState.translateX += deltaX;
+        lightboxState.translateY += deltaY;
+        lightboxState.lastX = e.clientX;
+        lightboxState.lastY = e.clientY;
+
+        updateImageTransform();
+    }
+
+    // 拖拽结束（桌面端）
+    function handleDragEnd() {
+        lightboxState.isDragging = false;
+    }
+
+    // 触摸开始（移动端）
+    function handleTouchStart(e) {
+        if (e.touches.length === 2) {
+            // 双指缩放开始
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            lightboxState.initialDistance = getDistance(touch1, touch2);
+            lightboxState.initialScale = lightboxState.scale;
+            lightboxState.isDragging = false;
+
+            // 记录双指中心位置（作为缩放中心）
+            const rect = e.target.getBoundingClientRect();
+            lightboxState.centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+            lightboxState.centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+        } else if (e.touches.length === 1) {
+            // 单指触摸 - 检测双击
+            const touch = e.touches[0];
+            const now = new Date().getTime();
+            const timeDiff = now - lightboxState.lastTapTime;
+            const xDiff = Math.abs(touch.clientX - lightboxState.lastTapX);
+            const yDiff = Math.abs(touch.clientY - lightboxState.lastTapY);
+
+            // 300ms内，位置偏移小于30px视为双击
+            if (timeDiff < 300 && xDiff < 30 && yDiff < 30) {
+                e.preventDefault();
+                resetLightboxState();
+                lightboxState.lastTapTime = 0; // 重置，防止三击误判
+                return;
+            }
+
+            // 只有点击图片本身时才允许拖拽
+            if (e.target.id === 'lightboxImage') {
+                // 记录本次触摸信息
+                lightboxState.lastTapTime = now;
+                lightboxState.lastTapX = touch.clientX;
+                lightboxState.lastTapY = touch.clientY;
+
+                // 开始拖拽
+                lightboxState.isDragging = true;
+                lightboxState.lastX = touch.clientX;
+                lightboxState.lastY = touch.clientY;
+            } else {
+                lightboxState.lastTapTime = now;
+                lightboxState.lastTapX = touch.clientX;
+                lightboxState.lastTapY = touch.clientY;
+            }
+        }
+    }
+
+    // 触摸移动（移动端）
+    function handleTouchMove(e) {
+        if (e.touches.length === 2) {
+            // 双指缩放（以双指中心为缩放中心）
+            e.preventDefault();
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentDistance = getDistance(touch1, touch2);
+
+            const lightbox = document.getElementById('lightbox');
+            const rect = lightbox.getBoundingClientRect();
+
+            // 双指中心相对于容器中心的偏移
+            const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left - rect.width / 2;
+            const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top - rect.height / 2;
+
+            const oldScale = lightboxState.scale;
+            const newScale = Math.min(Math.max(
+                (currentDistance / lightboxState.initialDistance) * lightboxState.initialScale,
+                0.5
+            ), 5);
+
+            // 计算新的偏移，保持双指中心指向的点不动
+            const scaleRatio = newScale / oldScale;
+            lightboxState.translateX = centerX - (centerX - lightboxState.translateX) * scaleRatio;
+            lightboxState.translateY = centerY - (centerY - lightboxState.translateY) * scaleRatio;
+            lightboxState.scale = newScale;
+            updateImageTransform();
+        } else if (e.touches.length === 1 && lightboxState.isDragging) {
+            // 单指拖拽（只在点击图片时）
+            e.preventDefault();
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - lightboxState.lastX;
+            const deltaY = touch.clientY - lightboxState.lastY;
+
+            lightboxState.translateX += deltaX;
+            lightboxState.translateY += deltaY;
+            lightboxState.lastX = touch.clientX;
+            lightboxState.lastY = touch.clientY;
+
+            updateImageTransform();
+        }
+    }
+
+    // 计算两点距离
+    function getDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     // ============================================
