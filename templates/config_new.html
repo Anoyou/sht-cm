@@ -10,7 +10,54 @@
 <h1 class="page-title">系统配置</h1>
 
 <div class="config-grid">
-    <!-- 系统配置卡片 -->
+    <!-- 功能开关卡片 - 核心功能控制 -->
+    <div class="config-card">
+        <h3>功能开关</h3>
+        <div class="form-field">
+            <div class="form-left">
+                <div class="form-label">每日定时爬取</div>
+                <div class="form-desc">每天自动执行一次增量爬取（固定抓取48小时内前3页，全板块）</div>
+            </div>
+            <div class="form-right">
+                <div class="switch-container">
+                    <label class="switch">
+                        <input type="checkbox" id="cfg-auto-crawl">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="switch-label" id="auto-crawl-label">关闭</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-field field-hidden" id="auto-crawl-time-field">
+            <div class="form-left">
+                <div class="form-label">定时爬取时间</div>
+                <div class="form-desc">每日执行的具体时间点</div>
+            </div>
+            <div class="form-right">
+                <input type="time" id="cfg-auto-crawl-time" value="03:00">
+                <span id="badge-auto-crawl-time" class="status-badge ok">已配置</span>
+            </div>
+        </div>
+
+        <div class="form-field">
+            <div class="form-left">
+                <div class="form-label">安全模式</div>
+                <div class="form-desc">开启后资源卡片图片将被模糊遮罩，点击可查看大图</div>
+            </div>
+            <div class="form-right">
+                <div class="switch-container">
+                    <label class="switch">
+                        <input type="checkbox" id="cfg-safe-mode">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="switch-label" id="safe-mode-label">关闭</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统配置卡片 - 网络基础设置 -->
     <div class="config-card">
         <h3>系统配置</h3>
         <div class="form-field">
@@ -65,7 +112,112 @@
         </div>
     </div>
 
-    <!-- Telegram 模板配置卡片 -->
+    <!-- 爬虫配置卡片 - 性能参数 -->
+    <div class="config-card">
+        <h3>爬虫配置</h3>
+        <div class="form-field">
+            <div class="form-left">
+                <div class="form-label">爬虫模式</div>
+                <div class="form-desc">async=异步高性能 / thread=多线程 / sync=单线程串行</div>
+            </div>
+            <div class="form-right">
+                <select id="cfg-crawler-mode" onchange="toggleCrawlerFields()">
+                    <option value="async">异步高性能模式 (async) - 推荐</option>
+                    <option value="thread">同步多线程模式 (thread)</option>
+                    <option value="sync">单线程串行模式 (sync)</option>
+                </select>
+                <span id="badge-crawler-mode" class="status-badge ok">已配置</span>
+            </div>
+        </div>
+
+        <!-- 异步模式专属设置 -->
+        <div id="async-settings" class="crawler-specific-settings">
+            <div class="form-field">
+                <div class="form-left">
+                    <div class="form-label">异步并发数</div>
+                    <div class="form-desc">同时发起的 HTTP 请求数量 (建议: 10-30)</div>
+                </div>
+                <div class="form-right">
+                    <input type="number" id="cfg-crawler-concurrency" min="1" max="50" step="1" placeholder="20">
+                    <span id="badge-crawler-concurrency" class="status-badge ok">已配置</span>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <div class="form-left">
+                    <div class="form-label">详情页爬取随机延迟 (秒)</div>
+                    <div class="form-desc">异步模式下每个详情页请求前的错峰延迟 (建议: 0.3 - 1.5)</div>
+                </div>
+                <div class="form-right" style="gap: 0.5rem;">
+                    <input type="number" id="cfg-async-delay-min" min="0" max="10" step="0.1" placeholder="0.3"
+                        style="width: 45%;">
+                    <span>-</span>
+                    <input type="number" id="cfg-async-delay-max" min="0" max="10" step="0.1" placeholder="1.5"
+                        style="width: 45%;">
+                    <span id="badge-async-delay" class="status-badge ok">已配置</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 多线程模式专属设置 -->
+        <div id="thread-settings" class="crawler-specific-settings" style="display: none;">
+            <div class="form-field">
+                <div class="form-left">
+                    <div class="form-label">多线程数量</div>
+                    <div class="form-desc">并行工作的处理线程数量 (建议: 5-15)</div>
+                </div>
+                <div class="form-right">
+                    <input type="number" id="cfg-crawler-thread-count" min="1" max="50" step="1" placeholder="10">
+                    <span id="badge-crawler-thread-count" class="status-badge ok">已配置</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 同步/多线程模式共享延迟设置 -->
+        <div id="sync-settings" class="crawler-specific-settings" style="display: none;">
+            <div class="form-field">
+                <div class="form-left">
+                    <div class="form-label">页面请求随机延迟 (秒)</div>
+                    <div class="form-desc">多线程/同步模式下每个页面请求间的错峰延迟 (建议: 0.3 - 1.5)</div>
+                </div>
+                <div class="form-right" style="gap: 0.5rem;">
+                    <input type="number" id="cfg-sync-delay-min" min="0" max="10" step="0.1" placeholder="0.3"
+                        style="width: 45%;">
+                    <span>-</span>
+                    <input type="number" id="cfg-sync-delay-max" min="0" max="10" step="0.1" placeholder="1.5"
+                        style="width: 45%;">
+                    <span id="badge-sync-delay" class="status-badge ok">已配置</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 心跳通知设置 -->
+        <div class="form-field">
+            <div class="form-left">
+                <div class="form-label">心跳通知间隔</div>
+                <div class="form-desc">爬虫任务运行期间的进度通知频率 (建议: 30-300秒)</div>
+            </div>
+            <div class="form-right">
+                <input type="number" id="cfg-heartbeat-interval" min="10" max="600" step="10" placeholder="60">
+                <span>秒</span>
+                <span id="badge-heartbeat-interval" class="status-badge ok">已配置</span>
+            </div>
+        </div>
+
+        <!-- 全局错误阈值设置 -->
+        <div class="form-field">
+            <div class="form-left">
+                <div class="form-label">全局错误阈值</div>
+                <div class="form-desc">任务失败次数超过此值时自动停止 (建议: 100-1000)</div>
+            </div>
+            <div class="form-right">
+                <input type="number" id="cfg-global-error-threshold" min="10" max="5000" step="10" placeholder="300">
+                <span id="badge-global-error-threshold" class="status-badge ok">已配置</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telegram 通知模板卡片 - 高级自定义 -->
     <div class="config-card">
         <div class="card-header-flex">
             <h3>Telegram 通知模板</h3>
@@ -189,7 +341,7 @@
         </div>
     </div>
 
-    <!-- 日志配置卡片 -->
+    <!-- 日志配置卡片 - 调试相关 -->
     <div class="config-card">
         <h3>日志配置</h3>
         <div class="form-field">
@@ -215,158 +367,6 @@
             <div class="form-right">
                 <input type="number" id="cfg-log-buffer-size" min="1000" max="100000" step="1000" placeholder="10000">
                 <span id="badge-log-buffer-size" class="status-badge ok">已配置</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 爬虫配置卡片 -->
-    <div class="config-card">
-        <h3>爬虫配置</h3>
-        <div class="form-field">
-            <div class="form-left">
-                <div class="form-label">爬虫模式</div>
-                <div class="form-desc">async=异步高性能 / thread=多线程 / sync=单线程串行</div>
-            </div>
-            <div class="form-right">
-                <select id="cfg-crawler-mode" onchange="toggleCrawlerFields()">
-                    <option value="async">异步高性能模式 (async) - 推荐</option>
-                    <option value="thread">同步多线程模式 (thread)</option>
-                    <option value="sync">单线程串行模式 (sync)</option>
-                </select>
-                <span id="badge-crawler-mode" class="status-badge ok">已配置</span>
-            </div>
-        </div>
-
-        <!-- 异步模式专属设置 -->
-        <div id="async-settings" class="crawler-specific-settings">
-            <div class="form-field">
-                <div class="form-left">
-                    <div class="form-label">异步并发数</div>
-                    <div class="form-desc">同时发起的 HTTP 请求数量 (建议: 10-30)</div>
-                </div>
-                <div class="form-right">
-                    <input type="number" id="cfg-crawler-concurrency" min="1" max="50" step="1" placeholder="20">
-                    <span id="badge-crawler-concurrency" class="status-badge ok">已配置</span>
-                </div>
-            </div>
-
-            <div class="form-field">
-                <div class="form-left">
-                    <div class="form-label">详情页爬取随机延迟 (秒)</div>
-                    <div class="form-desc">异步模式下每个详情页请求前的错峰延迟 (建议: 0.3 - 1.5)</div>
-                </div>
-                <div class="form-right" style="gap: 0.5rem;">
-                    <input type="number" id="cfg-async-delay-min" min="0" max="10" step="0.1" placeholder="0.3"
-                        style="width: 45%;">
-                    <span>-</span>
-                    <input type="number" id="cfg-async-delay-max" min="0" max="10" step="0.1" placeholder="1.5"
-                        style="width: 45%;">
-                    <span id="badge-async-delay" class="status-badge ok">已配置</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 多线程模式专属设置 -->
-        <div id="thread-settings" class="crawler-specific-settings" style="display: none;">
-            <div class="form-field">
-                <div class="form-left">
-                    <div class="form-label">多线程数量</div>
-                    <div class="form-desc">并行工作的处理线程数量 (建议: 5-15)</div>
-                </div>
-                <div class="form-right">
-                    <input type="number" id="cfg-crawler-thread-count" min="1" max="50" step="1" placeholder="10">
-                    <span id="badge-crawler-thread-count" class="status-badge ok">已配置</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 同步/多线程模式共享延迟设置 -->
-        <div id="sync-settings" class="crawler-specific-settings" style="display: none;">
-            <div class="form-field">
-                <div class="form-left">
-                    <div class="form-label">页面请求随机延迟 (秒)</div>
-                    <div class="form-desc">多线程/同步模式下每个页面请求间的错峰延迟 (建议: 0.3 - 1.5)</div>
-                </div>
-                <div class="form-right" style="gap: 0.5rem;">
-                    <input type="number" id="cfg-sync-delay-min" min="0" max="10" step="0.1" placeholder="0.3"
-                        style="width: 45%;">
-                    <span>-</span>
-                    <input type="number" id="cfg-sync-delay-max" min="0" max="10" step="0.1" placeholder="1.5"
-                        style="width: 45%;">
-                    <span id="badge-sync-delay" class="status-badge ok">已配置</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 心跳通知设置 -->
-        <div class="form-field">
-            <div class="form-left">
-                <div class="form-label">心跳通知间隔</div>
-                <div class="form-desc">爬虫任务运行期间的进度通知频率 (建议: 30-300秒)</div>
-            </div>
-            <div class="form-right">
-                <input type="number" id="cfg-heartbeat-interval" min="10" max="600" step="10" placeholder="60">
-                <span>秒</span>
-                <span id="badge-heartbeat-interval" class="status-badge ok">已配置</span>
-            </div>
-        </div>
-
-        <!-- 全局错误阈值设置 -->
-        <div class="form-field">
-            <div class="form-left">
-                <div class="form-label">全局错误阈值</div>
-                <div class="form-desc">任务失败次数超过此值时自动停止 (建议: 100-1000)</div>
-            </div>
-            <div class="form-right">
-                <input type="number" id="cfg-global-error-threshold" min="10" max="5000" step="10" placeholder="300">
-                <span id="badge-global-error-threshold" class="status-badge ok">已配置</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 功能开关卡片 -->
-    <div class="config-card">
-        <h3>功能开关</h3>
-        <div class="form-field">
-            <div class="form-left">
-                <div class="form-label">每日定时爬取</div>
-                <div class="form-desc">每天自动执行一次增量爬取（固定抓取48小时内前3页，全板块）</div>
-            </div>
-            <div class="form-right">
-                <div class="switch-container">
-                    <label class="switch">
-                        <input type="checkbox" id="cfg-auto-crawl">
-                        <span class="slider"></span>
-                    </label>
-                    <span class="switch-label" id="auto-crawl-label">关闭</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-field" id="auto-crawl-time-field" style="display: none;">
-            <div class="form-left">
-                <div class="form-label">定时爬取时间</div>
-                <div class="form-desc">每日执行的具体时间点</div>
-            </div>
-            <div class="form-right">
-                <input type="time" id="cfg-auto-crawl-time" value="03:00">
-                <span id="badge-auto-crawl-time" class="status-badge ok">已配置</span>
-            </div>
-        </div>
-
-        <div class="form-field">
-            <div class="form-left">
-                <div class="form-label">安全模式</div>
-                <div class="form-desc">开启后资源卡片图片将被模糊遮罩，点击可查看大图</div>
-            </div>
-            <div class="form-right">
-                <div class="switch-container">
-                    <label class="switch">
-                        <input type="checkbox" id="cfg-safe-mode">
-                        <span class="slider"></span>
-                    </label>
-                    <span class="switch-label" id="safe-mode-label">关闭</span>
-                </div>
             </div>
         </div>
     </div>
@@ -792,11 +792,21 @@
         if (label) label.textContent = enabled ? '开启' : '关闭';
     }
 
-    // 定时爬取UI逻辑
+    // 定时爬取UI逻辑 - 带淡入淡出+滑动过渡效果
     function updateAutoCrawlUI(enabled) {
         const timeField = document.getElementById('auto-crawl-time-field');
         const label = document.getElementById('auto-crawl-label');
-        if (timeField) timeField.style.display = enabled ? 'block' : 'none';
+
+        if (timeField) {
+            if (enabled) {
+                // 显示：移除 field-hidden 类，触发淡入+展开动画
+                timeField.classList.remove('field-hidden');
+            } else {
+                // 隐藏：添加 field-hidden 类，触发淡出+收起动画
+                timeField.classList.add('field-hidden');
+            }
+        }
+
         if (label) label.textContent = enabled ? '开启' : '关闭';
     }
 
@@ -805,7 +815,7 @@
         loadConfigValues();
         initSafeModeSwitch();
         loadTelegramTemplates();
-        bindTemplateEditor();
+        // bindTemplateEditor(); // 函数不存在，暂时注释掉
 
         // 定时任务开关监听
         const autoCrawlSwitch = document.getElementById('cfg-auto-crawl');

@@ -57,13 +57,14 @@
     overflow: hidden;
 }
 
+/* 定时爬取时间字段的显示/隐藏过渡效果 */
 .form-field.field-hidden {
-    opacity: 0;
-    max-height: 0;
-    margin-bottom: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    pointer-events: none;
+    opacity: 0 !important;
+    max-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    pointer-events: none !important;
 }
 
 @media (max-width: 768px) {
